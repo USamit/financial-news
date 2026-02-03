@@ -194,7 +194,7 @@ for pub in [‘ET’, ‘Mint’, ‘MC’, ‘FT’, ‘WSJ’, ‘Barrons’]:
 pub_feeds = {k: v for k, v in feed_stats.items() if k.startswith(pub)}
 if pub_feeds:
 total_rel = sum(f[‘relevant’] for f in pub_feeds.values())
-print(f’{pub}: {total_rel} articles from {len(pub_feeds)} feeds’)
+print(pub + ‘: ’ + str(total_rel) + ’ articles from ’ + str(len(pub_feeds)) + ’ feeds’)
 
 print(’\nTotal unique articles: ’ + str(len(articles)))
 print(’=’*60)
