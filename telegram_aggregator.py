@@ -8,8 +8,6 @@ token = os.getenv('TELEGRAM_BOT_TOKEN')
 chat = os.getenv('TELEGRAM_CHAT_ID')
 
 print('Starting Financial News Aggregator...')
-print('Token present: ' + str(bool(token)))
-print('Chat ID present: ' + str(bool(chat)))
 
 feeds = {
     # Economic Times - Verified Working
@@ -37,18 +35,15 @@ keywords = [
 ]
 
 articles = []
-total_fetched = 0
 
 for source, url in feeds.items():
     try:
-        print('\nFetching from ' + source + '...')
+        print('Fetching from ' + source + '...')
         feed = feedparser.parse(url)
         
         if not feed.entries:
-            print('  No entries found')
             continue
             
-        print('  Total entries in feed: ' + str(len(feed.entries)))
         source_count = 0
         
         for entry in feed.entries[:50]:
@@ -60,8 +55,8 @@ for source, url in feeds.items():
                     except:
                         pass
                 
-                # Skip old articles
-                if pub_date and (datetime.now() - pub_date) > timedelta(days=3):
+                # Changed to 2 days
+                if pub_date and (datetime.now() - pub_date) > timedelta(days=2):
                     continue
                 
                 title = entry.get('title', '').strip()
@@ -71,7 +66,6 @@ for source, url in feeds.items():
                 if not title or not link:
                     continue
                 
-                # Check relevance
                 text = (title + ' ' + str(description)).lower()
                 is_relevant = any(kw in text for kw in keywords)
                 
@@ -90,126 +84,139 @@ for source, url in feeds.items():
                         break
                         
             except Exception as e:
-                print('  Error processing entry: ' + str(e))
                 continue
         
-        total_fetched = total_fetched + source_count
         print('  Found ' + str(source_count) + ' relevant articles')
         
     except Exception as e:
-        print('  Error fetching from ' + source + ': ' + str(e))
+        print('  Error: ' + str(e))
         continue
 
-print('\n' + '='*50)
-print('SUMMARY')
-print('='*50)
-print('Total articles collected: ' + str(len(articles)))
-print('From ' + str(len([s for s in feeds.keys() if any(a['source'] == s for a in articles)])) + ' sources')
+print('\nTotal articles: ' + str(len(articles)))
 
 if not articles:
-    print('\nNo articles found. Reasons could be:')
-    print('1. No new articles in last 3 days')
-    print('2. RSS feeds temporarily unavailable')
-    print('3. Network connectivity issues')
-    
-    msg = '*Financial News Digest*\n'
-    msg = msg + datetime.now().strftime('%B %d, %Y') + '\n\n'
-    msg = msg + 'No relevant articles found today.\n'
-    msg = msg + 'This could be due to:\n'
-    msg = msg + '- Weekend/Holiday\n'
-    msg = msg + '- RSS feeds temporarily unavailable\n'
-    msg = msg + '- Network issues\n\n'
-    msg = msg + 'The system will try again tomorrow.'
+    msg = '*Financial News Digest*\n' + datetime.now().strftime('%B %d, %Y') + '\n\nNo relevant articles found today.'
+    messages = [msg]
 else:
-    # Sort by date
     articles.sort(key=lambda x: x['date'], reverse=True)
     
     by_source = defaultdict(list)
     for article in articles:
         by_source[article['source']].append(article)
     
-    msg = '*Financial News Digest*\n'
-    msg = msg + datetime.now().strftime('%B %d, %Y') + '\n\n'
-    msg = msg + '📊 ' + str(len(articles)) + ' articles from ' + str(len(by_source)) + ' sources\n'
-    msg = msg + '━━━━━━━━━━━━━━━━━\n\n'
+    # Build message parts
+    messages = []
+    current_msg = '*Financial News Digest*\n'
+    current_msg = current_msg + datetime.now().strftime('%B %d, %Y') + '\n\n'
+    current_msg = current_msg + '📊 ' + str(len(articles)) + ' articles from ' + str(len(by_source)) + ' sources\n'
+    current_msg = current_msg + '━━━━━━━━━━━━━━━━━\n\n'
     
     # Group by publication
     et_sources = [s for s in by_source.keys() if s.startswith('ET ')]
     mint_sources = [s for s in by_source.keys() if s.startswith('Mint ')]
     mc_sources = [s for s in by_source.keys() if s.startswith('MC ')]
     
+    def add_section(msg, section_text):
+        # If adding this would exceed limit, start new message
+        if len(msg) + len(section_text) > 3800:
+            return msg, section_text
+        return msg + section_text, ''
+    
     # Economic Times
     if et_sources:
-        msg = msg + '📰 *ECONOMIC TIMES*\n'
+        section = '📰 *ECONOMIC TIMES*\n'
         for source in sorted(et_sources):
-            items = by_source[source][:6]
+            items = by_source[source][:5]
             if items:
-                msg = msg + '_' + source.replace('ET ', '') + '_\n'
+                section = section + '_' + source.replace('ET ', '') + '_\n'
                 for i, article in enumerate(items, 1):
                     title_short = article['title']
-                    if len(title_short) > 90:
-                        title_short = title_short[:87] + '...'
-                    msg = msg + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
-        msg = msg + '\n'
+                    if len(title_short) > 80:
+                        title_short = title_short[:77] + '...'
+                    section = section + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
+        section = section + '\n'
+        
+        current_msg, overflow = add_section(current_msg, section)
+        if overflow:
+            messages.append(current_msg)
+            current_msg = overflow
     
     # Mint
     if mint_sources:
-        msg = msg + '📰 *MINT*\n'
+        section = '📰 *MINT*\n'
         for source in sorted(mint_sources):
-            items = by_source[source][:6]
+            items = by_source[source][:5]
             if items:
-                msg = msg + '_' + source.replace('Mint ', '') + '_\n'
+                section = section + '_' + source.replace('Mint ', '') + '_\n'
                 for i, article in enumerate(items, 1):
                     title_short = article['title']
-                    if len(title_short) > 90:
-                        title_short = title_short[:87] + '...'
-                    msg = msg + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
-        msg = msg + '\n'
+                    if len(title_short) > 80:
+                        title_short = title_short[:77] + '...'
+                    section = section + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
+        section = section + '\n'
+        
+        current_msg, overflow = add_section(current_msg, section)
+        if overflow:
+            messages.append(current_msg)
+            current_msg = overflow
     
     # MoneyControl
     if mc_sources:
-        msg = msg + '📰 *MONEYCONTROL*\n'
+        section = '📰 *MONEYCONTROL*\n'
         for source in sorted(mc_sources):
-            items = by_source[source][:6]
+            items = by_source[source][:5]
             if items:
-                msg = msg + '_' + source.replace('MC ', '') + '_\n'
+                section = section + '_' + source.replace('MC ', '') + '_\n'
                 for i, article in enumerate(items, 1):
                     title_short = article['title']
-                    if len(title_short) > 90:
-                        title_short = title_short[:87] + '...'
-                    msg = msg + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
-        msg = msg + '\n'
+                    if len(title_short) > 80:
+                        title_short = title_short[:77] + '...'
+                    section = section + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
+        section = section + '\n'
+        
+        current_msg, overflow = add_section(current_msg, section)
+        if overflow:
+            messages.append(current_msg)
+            current_msg = overflow
+    
+    # Add remaining content
+    if current_msg.strip():
+        messages.append(current_msg)
 
 # Send to Telegram
 if not token or not chat:
-    print('\n❌ ERROR: Token or Chat ID missing!')
-    print('Token: ' + str(token[:10] if token else 'None') + '...')
-    print('Chat ID: ' + str(chat))
+    print('ERROR: Token or Chat ID missing!')
 else:
     try:
-        print('\n📤 Sending to Telegram...')
         url = 'https://api.telegram.org/bot' + token + '/sendMessage'
-        data = {
-            'chat_id': chat,
-            'text': msg,
-            'parse_mode': 'Markdown',
-            'disable_web_page_preview': True
-        }
         
-        response = requests.post(url, json=data, timeout=30)
+        for i, msg in enumerate(messages):
+            print('\nSending message part ' + str(i+1) + '/' + str(len(messages)))
+            print('Message length: ' + str(len(msg)) + ' characters')
+            
+            data = {
+                'chat_id': chat,
+                'text': msg,
+                'parse_mode': 'Markdown',
+                'disable_web_page_preview': True
+            }
+            
+            response = requests.post(url, json=data, timeout=30)
+            
+            if response.status_code == 200:
+                print('✅ Sent part ' + str(i+1))
+            else:
+                print('❌ Error on part ' + str(i+1) + ': ' + str(response.status_code))
+                print(response.text[:200])
+            
+            # Small delay between messages
+            if i < len(messages) - 1:
+                import time
+                time.sleep(1)
         
-        print('Response status: ' + str(response.status_code))
-        
-        if response.status_code == 200:
-            print('✅ Successfully sent to Telegram!')
-        else:
-            print('❌ Telegram API Error:')
-            print('Status: ' + str(response.status_code))
-            print('Response: ' + response.text[:500])
+        print('\n✅ All messages sent!')
             
     except Exception as e:
-        print('❌ Error sending to Telegram: ' + str(e))
+        print('❌ Error: ' + str(e))
 
-print('\n' + '='*50)
-print('Script completed')
-print('='*50)
+print('\nScript completed')
