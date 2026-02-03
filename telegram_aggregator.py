@@ -52,7 +52,7 @@ for source, url in feeds.items():
             elif hasattr(entry, 'updated_parsed'):
                 pub_date = datetime(*entry.updated_parsed[:6])
             
-            if pub_date and (datetime.now() - pub_date) > timedelta(days=3):
+            if pub_date and (datetime.now() - pub_date) > timedelta(days=2):
                 continue
             
             title = entry.get('title', '')
