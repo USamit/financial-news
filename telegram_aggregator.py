@@ -55,12 +55,48 @@ feeds = {
 }
 
 # Broader keywords to catch more articles
+
 keywords = [
-    'bank', 'banking', 'financial', 'finance', 'fintech', 'credit', 'loan',
-    'payment', 'market', 'stock', 'equity', 'invest', 'insurance', 'bond',
-    'rbi', 'sebi', 'fed', 'economy', 'economic', 'trade', 'business',
-    'shares', 'fund', 'asset', 'capital', 'fiscal', 'monetary'
+    # Banking & Finance Core
+    'bank', 'banking', 'financial', 'finance', 'fintech',
+    'credit', 'loan', 'lender', 'capital', 'asset',
+
+    # Rates & Policy
+    'rate hike', 'rate cut', 'policy rate', 'repo', 'reverse repo',
+    'bank rate', 'fed funds', 'terminal rate',
+
+    # Deposits & Retail Funding
+    'deposit rate', 'term deposit', 'fixed deposit', 'fd rates',
+    'savings rate', 'certificate of deposit', 'cd rates',
+    'retail deposit', 'bulk deposit',
+
+    # Money Markets & Wholesale Funding
+    'commercial paper', 'treasury bill', 't-bill',
+    'money market', 'interbank', 'overnight rate',
+    'repo market',
+
+    # Bonds & Yield Curve
+    'bond yield', 'yield curve', 'credit spread',
+    'sovereign yield', 'gilts', 'g-sec', 'government securities',
+
+    # Corporate Borrowing
+    'corporate borrowing', 'bond issuance', 'debt issuance',
+    'refinancing', 'funding cost', 'cost of capital',
+
+    # Liquidity & Balance Sheet
+    'cost of funds', 'liquidity', 'lcr', 'nsfr',
+    'alm', 'deposit mobilisation',
+
+    # Inflation
+    'inflation', 'cpi inflation', 'core inflation',
+    'real rates', 'inflation expectations',
+
+    # India-Specific
+    'rbi', 'mclr', 'base rate', 'crr', 'slr',
+    'liquidity adjustment facility'
 ]
+
+
 
 articles = []
 feed_stats = {}
