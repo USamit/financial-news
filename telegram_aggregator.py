@@ -10,28 +10,66 @@ chat = os.getenv('TELEGRAM_CHAT_ID')
 print('Starting Financial News Aggregator...')
 
 feeds = {
-    # Economic Times - Verified Working
+    # Economic Times - Comprehensive Coverage
     'ET Markets': 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms',
     'ET Banking': 'https://economictimes.indiatimes.com/industry/banking/finance/banking/rssfeeds/13358256.cms',
     'ET Finance': 'https://economictimes.indiatimes.com/industry/banking/finance/rssfeeds/13358259.cms',
     'ET Insurance': 'https://economictimes.indiatimes.com/industry/banking/finance/insure/rssfeeds/13358276.cms',
     'ET Stocks': 'https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms',
+    'ET Economy': 'https://economictimes.indiatimes.com/news/economy/rssfeeds/1373380680.cms',
     
-    # Mint - Verified Working
+    # Mint - Comprehensive Coverage
     'Mint Markets': 'https://www.livemint.com/rss/markets',
     'Mint Money': 'https://www.livemint.com/rss/money',
     'Mint Banking': 'https://www.livemint.com/rss/industry/banking',
+    'Mint Insurance': 'https://www.livemint.com/rss/insurance',
     'Mint Companies': 'https://www.livemint.com/rss/companies',
+    'Mint Economy': 'https://www.livemint.com/rss/news/india',
     
-    # MoneyControl - Verified Working
+    # MoneyControl - Comprehensive Coverage
     'MC Business': 'https://www.moneycontrol.com/rss/business.xml',
-    'MC Markets': 'https://www.moneycontrol.com/rss/latestnews.xml'
+    'MC Markets': 'https://www.moneycontrol.com/rss/marketedge.xml',
+    'MC Stocks': 'https://www.moneycontrol.com/rss/latestnews.xml',
+    'MC Banking': 'https://www.moneycontrol.com/rss/MCtopnews.xml',
+    
+    # Financial Times - Premium Global + India Coverage
+    'FT Markets': 'https://www.ft.com/markets?format=rss',
+    'FT Banking': 'https://www.ft.com/companies/financials?format=rss',
+    'FT World Economy': 'https://www.ft.com/world/economy?format=rss',
+    'FT Companies': 'https://www.ft.com/companies?format=rss',
+    'FT India': 'https://www.ft.com/india?format=rss',
+    'FT Asia Markets': 'https://www.ft.com/markets/asia-pacific?format=rss',
+    
+    # Wall Street Journal - Premium US/Global + India Coverage
+    'WSJ Markets': 'https://feeds.content.dowjones.io/public/rss/RSSMarketsMain',
+    'WSJ Finance': 'https://feeds.content.dowjones.io/public/rss/WSJcomUSBusiness',
+    'WSJ Economy': 'https://feeds.content.dowjones.io/public/rss/RSSWorldNews',
+    'WSJ India': 'https://feeds.content.dowjones.io/public/rss/WSJcomIndia',
+    'WSJ Asia': 'https://feeds.content.dowjones.io/public/rss/WSJcomAsia',
+    
+    # Barrons - Premium Investment + India Coverage
+    'Barrons Markets': 'https://www.barrons.com/rss',
+    'Barrons Asia': 'https://www.barrons.com/rss/asia'
 }
 
 keywords = [
-    'bank', 'banking', 'financial', 'finance', 'fintech', 'credit', 'loan',
-    'payment', 'upi', 'market', 'stock', 'equity', 'invest', 'insurance',
-    'rbi', 'sebi', 'deposit', 'nifty', 'sensex', 'ipo', 'mutual fund'
+    # Banking
+    'bank', 'banking', 'neobank', 'digital bank', 'hdfc', 'icici', 'sbi', 'axis',
+    # Finance
+    'financial', 'finance', 'fintech', 'credit', 'loan', 'lending', 'borrowing',
+    # Payments
+    'payment', 'upi', 'wallet', 'paytm', 'phonepe', 'razorpay',
+    # Markets
+    'market', 'stock', 'equity', 'share', 'trading', 'invest', 'sensex', 'nifty', 'nse', 'bse',
+    # Insurance
+    'insurance', 'insurer', 'policy', 'premium', 'life insurance', 'health insurance', 'lic',
+    # Regulators
+    'rbi', 'sebi', 'irdai', 'reserve bank', 'central bank', 'fed', 'federal reserve',
+    # Key Terms
+    'deposit', 'npa', 'monetary', 'fiscal', 'interest rate', 'repo rate',
+    'bond', 'treasury', 'derivative', 'mutual fund', 'ipo', 'rupee', 'inr',
+    # India specific
+    'india', 'indian', 'mumbai', 'delhi', 'bangalore', 'adani', 'reliance', 'tata'
 ]
 
 articles = []
@@ -42,6 +80,7 @@ for source, url in feeds.items():
         feed = feedparser.parse(url)
         
         if not feed.entries:
+            print('  No entries')
             continue
             
         source_count = 0
@@ -55,7 +94,7 @@ for source, url in feeds.items():
                     except:
                         pass
                 
-                # Changed to 2 days
+                # 2 days lookback
                 if pub_date and (datetime.now() - pub_date) > timedelta(days=2):
                     continue
                 
@@ -86,13 +125,13 @@ for source, url in feeds.items():
             except Exception as e:
                 continue
         
-        print('  Found ' + str(source_count) + ' relevant articles')
+        print('  Found ' + str(source_count))
         
     except Exception as e:
         print('  Error: ' + str(e))
         continue
 
-print('\nTotal articles: ' + str(len(articles)))
+print('\nTotal: ' + str(len(articles)) + ' articles')
 
 if not articles:
     msg = '*Financial News Digest*\n' + datetime.now().strftime('%B %d, %Y') + '\n\nNo relevant articles found today.'
@@ -104,7 +143,7 @@ else:
     for article in articles:
         by_source[article['source']].append(article)
     
-    # Build message parts
+    # Build messages
     messages = []
     current_msg = '*Financial News Digest*\n'
     current_msg = current_msg + datetime.now().strftime('%B %d, %Y') + '\n\n'
@@ -112,30 +151,34 @@ else:
     current_msg = current_msg + '━━━━━━━━━━━━━━━━━\n\n'
     
     # Group by publication
-    et_sources = [s for s in by_source.keys() if s.startswith('ET ')]
-    mint_sources = [s for s in by_source.keys() if s.startswith('Mint ')]
-    mc_sources = [s for s in by_source.keys() if s.startswith('MC ')]
+    et_sources = sorted([s for s in by_source.keys() if s.startswith('ET ')])
+    mint_sources = sorted([s for s in by_source.keys() if s.startswith('Mint ')])
+    mc_sources = sorted([s for s in by_source.keys() if s.startswith('MC ')])
+    ft_sources = sorted([s for s in by_source.keys() if s.startswith('FT ')])
+    wsj_sources = sorted([s for s in by_source.keys() if s.startswith('WSJ ')])
+    barrons_sources = sorted([s for s in by_source.keys() if 'Barrons' in s])
     
     def add_section(msg, section_text):
-        # If adding this would exceed limit, start new message
         if len(msg) + len(section_text) > 3800:
             return msg, section_text
         return msg + section_text, ''
     
-    # Economic Times
-    if et_sources:
-        section = '📰 *ECONOMIC TIMES*\n'
-        for source in sorted(et_sources):
+    def build_section(title, sources_list, prefix=''):
+        section = '📰 *' + title + '*\n'
+        for source in sources_list:
             items = by_source[source][:5]
             if items:
-                section = section + '_' + source.replace('ET ', '') + '_\n'
+                section = section + '_' + source.replace(prefix, '') + '_\n'
                 for i, article in enumerate(items, 1):
                     title_short = article['title']
-                    if len(title_short) > 80:
-                        title_short = title_short[:77] + '...'
+                    if len(title_short) > 75:
+                        title_short = title_short[:72] + '...'
                     section = section + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
-        section = section + '\n'
-        
+        return section + '\n'
+    
+    # Economic Times
+    if et_sources:
+        section = build_section('ECONOMIC TIMES', et_sources, 'ET ')
         current_msg, overflow = add_section(current_msg, section)
         if overflow:
             messages.append(current_msg)
@@ -143,18 +186,7 @@ else:
     
     # Mint
     if mint_sources:
-        section = '📰 *MINT*\n'
-        for source in sorted(mint_sources):
-            items = by_source[source][:5]
-            if items:
-                section = section + '_' + source.replace('Mint ', '') + '_\n'
-                for i, article in enumerate(items, 1):
-                    title_short = article['title']
-                    if len(title_short) > 80:
-                        title_short = title_short[:77] + '...'
-                    section = section + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
-        section = section + '\n'
-        
+        section = build_section('MINT', mint_sources, 'Mint ')
         current_msg, overflow = add_section(current_msg, section)
         if overflow:
             messages.append(current_msg)
@@ -162,37 +194,48 @@ else:
     
     # MoneyControl
     if mc_sources:
-        section = '📰 *MONEYCONTROL*\n'
-        for source in sorted(mc_sources):
-            items = by_source[source][:5]
-            if items:
-                section = section + '_' + source.replace('MC ', '') + '_\n'
-                for i, article in enumerate(items, 1):
-                    title_short = article['title']
-                    if len(title_short) > 80:
-                        title_short = title_short[:77] + '...'
-                    section = section + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
-        section = section + '\n'
-        
+        section = build_section('MONEYCONTROL', mc_sources, 'MC ')
         current_msg, overflow = add_section(current_msg, section)
         if overflow:
             messages.append(current_msg)
             current_msg = overflow
     
-    # Add remaining content
+    # Financial Times
+    if ft_sources:
+        section = build_section('FINANCIAL TIMES', ft_sources, 'FT ')
+        current_msg, overflow = add_section(current_msg, section)
+        if overflow:
+            messages.append(current_msg)
+            current_msg = overflow
+    
+    # Wall Street Journal
+    if wsj_sources:
+        section = build_section('WALL STREET JOURNAL', wsj_sources, 'WSJ ')
+        current_msg, overflow = add_section(current_msg, section)
+        if overflow:
+            messages.append(current_msg)
+            current_msg = overflow
+    
+    # Barrons
+    if barrons_sources:
+        section = build_section('BARRONS', barrons_sources, 'Barrons ')
+        current_msg, overflow = add_section(current_msg, section)
+        if overflow:
+            messages.append(current_msg)
+            current_msg = overflow
+    
     if current_msg.strip():
         messages.append(current_msg)
 
 # Send to Telegram
 if not token or not chat:
-    print('ERROR: Token or Chat ID missing!')
+    print('ERROR: Missing credentials')
 else:
     try:
         url = 'https://api.telegram.org/bot' + token + '/sendMessage'
         
         for i, msg in enumerate(messages):
-            print('\nSending message part ' + str(i+1) + '/' + str(len(messages)))
-            print('Message length: ' + str(len(msg)) + ' characters')
+            print('\nSending part ' + str(i+1) + '/' + str(len(messages)))
             
             data = {
                 'chat_id': chat,
@@ -206,17 +249,15 @@ else:
             if response.status_code == 200:
                 print('✅ Sent part ' + str(i+1))
             else:
-                print('❌ Error on part ' + str(i+1) + ': ' + str(response.status_code))
-                print(response.text[:200])
+                print('❌ Error: ' + str(response.status_code))
             
-            # Small delay between messages
             if i < len(messages) - 1:
                 import time
                 time.sleep(1)
         
-        print('\n✅ All messages sent!')
+        print('\n✅ Complete!')
             
     except Exception as e:
         print('❌ Error: ' + str(e))
 
-print('\nScript completed')
+print('\nDone')
