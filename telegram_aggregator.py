@@ -63,4 +63,13 @@ else:
             msg = msg + '   ' + article['time'] + '\n\n'
 
 if token and chat:
-    url = 'https://api.telegram.org/bot' + token + '/send​​​​​​​​​​​​​​​​
+    url = 'https://api.telegram.org/bot' + token + '/sendMessage'
+    data = {'chat_id': chat, 'text': msg, 'parse_mode': 'Markdown', 'disable_web_page_preview': False}
+    response = requests.post(url, json=data, timeout=10)
+    if response.status_code == 200:
+        print('Sent to Telegram!')
+    else:
+        print('Error: ' + str(response.status_code))
+        print(response.text)
+else:
+    print('No token or chat ID')
