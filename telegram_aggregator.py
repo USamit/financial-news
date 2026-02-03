@@ -8,6 +8,7 @@ token = os.getenv('TELEGRAM_BOT_TOKEN')
 chat = os.getenv('TELEGRAM_CHAT_ID')
 
 print('Starting Financial News Aggregator...')
+print('='*60)
 
 feeds = {
     # Economic Times - Comprehensive Coverage
@@ -47,42 +48,36 @@ feeds = {
     'WSJ India': 'https://feeds.content.dowjones.io/public/rss/WSJcomIndia',
     'WSJ Asia': 'https://feeds.content.dowjones.io/public/rss/WSJcomAsia',
     
-    # Barrons - Premium Investment + India Coverage
+    # Barrons - Premium Investment + India Coverage  
     'Barrons Markets': 'https://www.barrons.com/rss',
-    'Barrons Asia': 'https://www.barrons.com/rss/asia'
+    'Barrons Asia': 'https://www.barrons.com/articles/asia?mod=rss_asia'
 }
 
+# Broader keywords to catch more articles
 keywords = [
-    # Banking
-    'bank', 'banking', 'neobank', 'digital bank', 'hdfc', 'icici', 'sbi', 'axis',
-    # Finance
-    'financial', 'finance', 'fintech', 'credit', 'loan', 'lending', 'borrowing',
-    # Payments
-    'payment', 'upi', 'wallet', 'paytm', 'phonepe', 'razorpay',
-    # Markets
-    'market', 'stock', 'equity', 'share', 'trading', 'invest', 'sensex', 'nifty', 'nse', 'bse',
-    # Insurance
-    'insurance', 'insurer', 'policy', 'premium', 'life insurance', 'health insurance', 'lic',
-    # Regulators
-    'rbi', 'sebi', 'irdai', 'reserve bank', 'central bank', 'fed', 'federal reserve',
-    # Key Terms
-    'deposit', 'npa', 'monetary', 'fiscal', 'interest rate', 'repo rate',
-    'bond', 'treasury', 'derivative', 'mutual fund', 'ipo', 'rupee', 'inr',
-    # India specific
-    'india', 'indian', 'mumbai', 'delhi', 'bangalore', 'adani', 'reliance', 'tata'
+    'bank', 'banking', 'financial', 'finance', 'fintech', 'credit', 'loan',
+    'payment', 'market', 'stock', 'equity', 'invest', 'insurance', 'bond',
+    'rbi', 'sebi', 'fed', 'economy', 'economic', 'trade', 'business',
+    'shares', 'fund', 'asset', 'capital', 'fiscal', 'monetary'
 ]
 
 articles = []
+feed_stats = {}
 
 for source, url in feeds.items():
     try:
-        print('Fetching from ' + source + '...')
+        print('\n' + source + ':')
         feed = feedparser.parse(url)
         
+        total_entries = len(feed.entries)
+        print('  Total entries: ' + str(total_entries))
+        
         if not feed.entries:
-            print('  No entries')
+            print('  ❌ No entries found')
+            feed_stats[source] = {'total': 0, 'recent': 0, 'relevant': 0}
             continue
-            
+        
+        recent_count = 0
         source_count = 0
         
         for entry in feed.entries[:50]:
@@ -94,8 +89,12 @@ for source, url in feeds.items():
                     except:
                         pass
                 
-                # 2 days lookback
-                if pub_date and (datetime.now() - pub_date) > timedelta(days=2):
+                # Count recent articles
+                if pub_date and (datetime.now() - pub_date) <= timedelta(days=2):
+                    recent_count += 1
+                elif not pub_date:
+                    recent_count += 1
+                else:
                     continue
                 
                 title = entry.get('title', '').strip()
@@ -117,7 +116,7 @@ for source, url in feeds.items():
                         'time': time_str,
                         'date': pub_date or datetime.now()
                     })
-                    source_count = source_count + 1
+                    source_count += 1
                     
                     if source_count >= 8:
                         break
@@ -125,13 +124,32 @@ for source, url in feeds.items():
             except Exception as e:
                 continue
         
-        print('  Found ' + str(source_count))
+        feed_stats[source] = {
+            'total': total_entries,
+            'recent': recent_count,
+            'relevant': source_count
+        }
+        
+        print('  Recent (2 days): ' + str(recent_count))
+        print('  ✅ Relevant: ' + str(source_count))
         
     except Exception as e:
-        print('  Error: ' + str(e))
+        print('  ❌ Error: ' + str(e))
+        feed_stats[source] = {'total': 0, 'recent': 0, 'relevant': 0}
         continue
 
-print('\nTotal: ' + str(len(articles)) + ' articles')
+print('\n' + '='*60)
+print('SUMMARY BY PUBLICATION')
+print('='*60)
+
+for pub in ['ET', 'Mint', 'MC', 'FT', 'WSJ', 'Barrons']:
+    pub_feeds = {k: v for k, v in feed_stats.items() if k.startswith(pub)}
+    if pub_feeds:
+        total_rel = sum(f['relevant'] for f in pub_feeds.values())
+        print(f'{pub}: {total_rel} articles from {len(pub_feeds)} feeds')
+
+print('\nTotal articles: ' + str(len(articles)))
+print('='*60)
 
 if not articles:
     msg = '*Financial News Digest*\n' + datetime.now().strftime('%B %d, %Y') + '\n\nNo relevant articles found today.'
@@ -143,14 +161,12 @@ else:
     for article in articles:
         by_source[article['source']].append(article)
     
-    # Build messages
     messages = []
     current_msg = '*Financial News Digest*\n'
     current_msg = current_msg + datetime.now().strftime('%B %d, %Y') + '\n\n'
     current_msg = current_msg + '📊 ' + str(len(articles)) + ' articles from ' + str(len(by_source)) + ' sources\n'
     current_msg = current_msg + '━━━━━━━━━━━━━━━━━\n\n'
     
-    # Group by publication
     et_sources = sorted([s for s in by_source.keys() if s.startswith('ET ')])
     mint_sources = sorted([s for s in by_source.keys() if s.startswith('Mint ')])
     mc_sources = sorted([s for s in by_source.keys() if s.startswith('MC ')])
@@ -164,6 +180,8 @@ else:
         return msg + section_text, ''
     
     def build_section(title, sources_list, prefix=''):
+        if not sources_list:
+            return ''
         section = '📰 *' + title + '*\n'
         for source in sources_list:
             items = by_source[source][:5]
@@ -176,53 +194,22 @@ else:
                     section = section + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
         return section + '\n'
     
-    # Economic Times
-    if et_sources:
-        section = build_section('ECONOMIC TIMES', et_sources, 'ET ')
-        current_msg, overflow = add_section(current_msg, section)
-        if overflow:
-            messages.append(current_msg)
-            current_msg = overflow
-    
-    # Mint
-    if mint_sources:
-        section = build_section('MINT', mint_sources, 'Mint ')
-        current_msg, overflow = add_section(current_msg, section)
-        if overflow:
-            messages.append(current_msg)
-            current_msg = overflow
-    
-    # MoneyControl
-    if mc_sources:
-        section = build_section('MONEYCONTROL', mc_sources, 'MC ')
-        current_msg, overflow = add_section(current_msg, section)
-        if overflow:
-            messages.append(current_msg)
-            current_msg = overflow
-    
-    # Financial Times
-    if ft_sources:
-        section = build_section('FINANCIAL TIMES', ft_sources, 'FT ')
-        current_msg, overflow = add_section(current_msg, section)
-        if overflow:
-            messages.append(current_msg)
-            current_msg = overflow
-    
-    # Wall Street Journal
-    if wsj_sources:
-        section = build_section('WALL STREET JOURNAL', wsj_sources, 'WSJ ')
-        current_msg, overflow = add_section(current_msg, section)
-        if overflow:
-            messages.append(current_msg)
-            current_msg = overflow
-    
-    # Barrons
-    if barrons_sources:
-        section = build_section('BARRONS', barrons_sources, 'Barrons ')
-        current_msg, overflow = add_section(current_msg, section)
-        if overflow:
-            messages.append(current_msg)
-            current_msg = overflow
+    # Build all sections
+    for title, sources, prefix in [
+        ('ECONOMIC TIMES', et_sources, 'ET '),
+        ('MINT', mint_sources, 'Mint '),
+        ('MONEYCONTROL', mc_sources, 'MC '),
+        ('FINANCIAL TIMES', ft_sources, 'FT '),
+        ('WALL STREET JOURNAL', wsj_sources, 'WSJ '),
+        ('BARRONS', barrons_sources, 'Barrons ')
+    ]:
+        if sources:
+            section = build_section(title, sources, prefix)
+            if section:
+                current_msg, overflow = add_section(current_msg, section)
+                if overflow:
+                    messages.append(current_msg)
+                    current_msg = overflow
     
     if current_msg.strip():
         messages.append(current_msg)
@@ -235,7 +222,7 @@ else:
         url = 'https://api.telegram.org/bot' + token + '/sendMessage'
         
         for i, msg in enumerate(messages):
-            print('\nSending part ' + str(i+1) + '/' + str(len(messages)))
+            print('\nSending part ' + str(i+1) + '/' + str(len(messages)) + ' (' + str(len(msg)) + ' chars)')
             
             data = {
                 'chat_id': chat,
@@ -247,17 +234,18 @@ else:
             response = requests.post(url, json=data, timeout=30)
             
             if response.status_code == 200:
-                print('✅ Sent part ' + str(i+1))
+                print('✅ Sent')
             else:
                 print('❌ Error: ' + str(response.status_code))
+                print(response.text[:300])
             
             if i < len(messages) - 1:
                 import time
                 time.sleep(1)
         
-        print('\n✅ Complete!')
+        print('\n✅ All sent!')
             
     except Exception as e:
         print('❌ Error: ' + str(e))
 
-print('\nDone')
+print('\nScript completed')
