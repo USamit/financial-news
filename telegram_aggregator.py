@@ -4,20 +4,20 @@ import feedparser
 import requests
 from collections import defaultdict
 
-token = os.getenv(‘TELEGRAM_BOT_TOKEN’)
-chat = os.getenv(‘TELEGRAM_CHAT_ID’)
+token = os.getenv('TELEGRAM_BOT_TOKEN')
+chat = os.getenv('TELEGRAM_CHAT_ID')
 
-print(‘Starting Financial News Aggregator…’)
-print(’=’*60)
+print('Starting Financial News Aggregator…')
+print('='*60)
 
 feeds = {
 # Economic Times - Comprehensive Coverage
-‘ET Markets’: ‘https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms’,
-‘ET Banking’: ‘https://economictimes.indiatimes.com/industry/banking/finance/banking/rssfeeds/13358256.cms’,
-‘ET Finance’: ‘https://economictimes.indiatimes.com/industry/banking/finance/rssfeeds/13358259.cms’,
-‘ET Insurance’: ‘https://economictimes.indiatimes.com/industry/banking/finance/insure/rssfeeds/13358276.cms’,
-‘ET Stocks’: ‘https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms’,
-‘ET Economy’: ‘https://economictimes.indiatimes.com/news/economy/rssfeeds/1373380680.cms’,
+'ET Markets': 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms',
+'ET Banking': 'https://economictimes.indiatimes.com/industry/banking/finance/banking/rssfeeds/13358256.cms',
+'ET Finance': 'https://economictimes.indiatimes.com/industry/banking/finance/rssfeeds/13358259.cms',
+'ET Insurance': 'https://economictimes.indiatimes.com/industry/banking/finance/insure/rssfeeds/13358276.cms',
+'ET Stocks': 'https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms',
+'ET Economy': 'https://economictimes.indiatimes.com/news/economy/rssfeeds/1373380680.cms',
 
 ```
 # Mint - Comprehensive Coverage
@@ -60,8 +60,8 @@ feeds = {
 
 keywords = [
 # Banking & Finance Core
-‘bank’, ‘banking’, ‘financial’, ‘finance’, ‘fintech’,
-‘credit’, ‘loan’, ‘lender’, ‘capital’, ‘asset’,
+'bank', 'banking', 'financial', 'finance', 'fintech',
+'credit', 'loan', 'lender', 'capital', 'asset',
 
 ```
 # Rates & Policy
@@ -107,7 +107,7 @@ seen_urls = set()  # Track duplicate URLs
 
 for source, url in feeds.items():
 try:
-print(’\n’ + source + ‘:’)
+print('\n' + source + ':')
 feed = feedparser.parse(url)
 
 ```
@@ -186,25 +186,25 @@ except Exception as e:
     continue
 ```
 
-print(’\n’ + ‘=’*60)
-print(‘SUMMARY BY PUBLICATION’)
-print(’=’*60)
+print('\n' + '='*60)
+print('SUMMARY BY PUBLICATION')
+print('='*60)
 
-for pub in [‘ET’, ‘Mint’, ‘MC’, ‘FT’, ‘WSJ’, ‘Barrons’]:
+for pub in ['ET', 'Mint', 'MC', 'FT', 'WSJ', 'Barrons']:
 pub_feeds = {k: v for k, v in feed_stats.items() if k.startswith(pub)}
 if pub_feeds:
-total_rel = sum(f[‘relevant’] for f in pub_feeds.values())
-print(pub + ‘: ’ + str(total_rel) + ’ articles from ’ + str(len(pub_feeds)) + ’ feeds’)
+total_rel = sum(f['relevant'] for f in pub_feeds.values())
+print(pub + ': ' + str(total_rel) + ' articles from ' + str(len(pub_feeds)) + ' feeds')
 
-print(’\nTotal unique articles: ’ + str(len(articles)))
-print(’=’*60)
+print('\nTotal unique articles: ' + str(len(articles)))
+print('='*60)
 
 if not articles:
-msg = ‘*Financial News Digest*\n’ + datetime.now().strftime(’%B %d, %Y’) + ‘\n\nNo relevant articles found today.’
+msg = '*Financial News Digest*\n' + datetime.now().strftime('%B %d, %Y') + '\n\nNo relevant articles found today.'
 messages = [msg]
 else:
 # Sort ALL articles by recency first
-articles.sort(key=lambda x: x[‘date’], reverse=True)
+articles.sort(key=lambda x: x['date'], reverse=True)
 
 ```
 by_source = defaultdict(list)
@@ -270,10 +270,10 @@ if current_msg.strip():
 # Send to Telegram
 
 if not token or not chat:
-print(‘ERROR: Missing credentials’)
+print('ERROR: Missing credentials')
 else:
 try:
-url = ‘https://api.telegram.org/bot’ + token + ‘/sendMessage’
+url = 'https://api.telegram.org/bot' + token + '/sendMessage'
 
 ```
     for i, msg in enumerate(messages):
@@ -304,4 +304,4 @@ except Exception as e:
     print('❌ Error: ' + str(e))
 ```
 
-print(’\nScript completed’)
+print('\nScript completed')
