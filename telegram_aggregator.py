@@ -19,7 +19,7 @@ feeds = {
 'ET Stocks': 'https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms',
 'ET Economy': 'https://economictimes.indiatimes.com/news/economy/rssfeeds/1373380680.cms',
 
-```
+
 # Mint - Comprehensive Coverage
 'Mint Markets': 'https://www.livemint.com/rss/markets',
 'Mint Money': 'https://www.livemint.com/rss/money',
@@ -52,7 +52,7 @@ feeds = {
 # Barrons - Premium Investment + India Coverage  
 'Barrons Markets': 'https://www.barrons.com/rss',
 'Barrons Asia': 'https://www.barrons.com/articles/asia?mod=rss_asia'
-```
+
 
 }
 
@@ -63,7 +63,7 @@ keywords = [
 'bank', 'banking', 'financial', 'finance', 'fintech',
 'credit', 'loan', 'lender', 'capital', 'asset',
 
-```
+
 # Rates & Policy
 'rate hike', 'rate cut', 'policy rate', 'repo', 'reverse repo',
 'bank rate', 'fed funds', 'terminal rate',
@@ -97,7 +97,7 @@ keywords = [
 # India-Specific
 'rbi', 'mclr', 'base rate', 'crr', 'slr',
 'liquidity adjustment facility'
-```
+
 
 ]
 
@@ -110,7 +110,7 @@ try:
 print('\n' + source + ':')
 feed = feedparser.parse(url)
 
-```
+
     total_entries = len(feed.entries)
     print('  Total entries: ' + str(total_entries))
     
@@ -184,7 +184,7 @@ except Exception as e:
     print('  ❌ Error: ' + str(e))
     feed_stats[source] = {'total': 0, 'recent': 0, 'relevant': 0}
     continue
-```
+
 
 print('\n' + '='*60)
 print('SUMMARY BY PUBLICATION')
@@ -206,7 +206,7 @@ else:
 # Sort ALL articles by recency first
 articles.sort(key=lambda x: x['date'], reverse=True)
 
-```
+
 by_source = defaultdict(list)
 for article in articles:
     by_source[article['source']].append(article)
@@ -265,7 +265,7 @@ for title, sources, prefix in [
 
 if current_msg.strip():
     messages.append(current_msg)
-```
+
 
 # Send to Telegram
 
@@ -275,7 +275,7 @@ else:
 try:
 url = 'https://api.telegram.org/bot' + token + '/sendMessage'
 
-```
+
     for i, msg in enumerate(messages):
         print('\nSending part ' + str(i+1) + '/' + str(len(messages)) + ' (' + str(len(msg)) + ' chars)')
         
@@ -302,6 +302,6 @@ url = 'https://api.telegram.org/bot' + token + '/sendMessage'
         
 except Exception as e:
     print('❌ Error: ' + str(e))
-```
+
 
 print('\nScript completed')
