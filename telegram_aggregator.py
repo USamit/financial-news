@@ -161,14 +161,19 @@ print('=' * 60)
 
 if not articles:
     msg = '*Financial News Digest*\n' + datetime.now().strftime('%B %d, %Y') + '\n\nNo relevant articles found today.'
-    url = 'https://api.telegram.org/bot' + token + '/sendMessage'
-    requests.post(url, json={'chat_id': chat, 'text': msg, 'parse_mode': 'Markdown'})
+    messages = [msg]
 else:
     articles.sort(key=lambda x: x['date'], reverse=True)
     
     by_source = defaultdict(list)
     for article in articles:
         by_source[article['source']].append(article)
+    
+    messages = []
+    current_msg = '*Financial News Digest*\n'
+    current_msg = current_msg + datetime.now().strftime('%B %d, %Y') + '\n\n'
+    current_msg = current_msg + str(len(articles)) + ' unique articles from ' + str(len(by_source)) + ' sources\n'
+    current_msg = current_msg + '━━━━━━━━━━━━━━━━━\n\n'
     
     et_sources = sorted([s for s in by_source.keys() if s.startswith('ET ')])
     mint_sources = sorted([s for s in by_source.keys() if s.startswith('Mint ')])
@@ -177,15 +182,28 @@ else:
     wsj_sources = sorted([s for s in by_source.keys() if s.startswith('WSJ ')])
     barrons_sources = sorted([s for s in by_source.keys() if 'Barrons' in s])
     
-    msg = '*Financial News Digest*\n'
-    msg += datetime.now().strftime('%B %d, %Y') + '\n\n'
-    msg += str(len(articles)) + ' unique articles from ' + str(len(by_source)) + ' sources\n'
-    msg += '━━━━━━━━━━━━━━━━━\n\n'
+    def add_section(msg, section_text):
+        if len(msg) + len(section_text) > 3800:
+            return msg, section_text
+        return msg + section_text, ''
     
-    all_buttons = []
-    article_counter = 0
+    def build_section(title, sources_list, prefix=''):
+        if not sources_list:
+            return ''
+        section = '*' + title + '*\n'
+        for source in sources_list:
+            items = by_source[source][:5]
+            if items:
+                items_sorted = sorted(items, key=lambda x: x['date'], reverse=True)
+                section = section + '_' + source.replace(prefix, '') + '_\n'
+                for i, article in enumerate(items_sorted, 1):
+                    title_short = article['title']
+                    if len(title_short) > 75:
+                        title_short = title_short[:72] + '...'
+                    section = section + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
+        return section + '\n'
     
-    for section_title, sources_list, prefix in [
+    for title, sources, prefix in [
         ('ECONOMIC TIMES', et_sources, 'ET '),
         ('MINT', mint_sources, 'Mint '),
         ('MONEYCONTROL', mc_sources, 'MC '),
@@ -193,63 +211,48 @@ else:
         ('WALL STREET JOURNAL', wsj_sources, 'WSJ '),
         ('BARRONS', barrons_sources, 'Barrons ')
     ]:
-        if not sources_list:
-            continue
-        msg += '*' + section_title + '*\n'
-        for source in sources_list:
-            items = by_source[source][:5]
-            if items:
-                items_sorted = sorted(items, key=lambda x: x['date'], reverse=True)
-                msg += '_' + source.replace(prefix, '') + '_\n'
-                for article in items_sorted:
-                    article_counter += 1
-                    title_short = article['title']
-                    if len(title_short) > 70:
-                        title_short = title_short[:67] + '...'
-                    msg += str(article_counter) + '. ' + title_short + '\n'
-                    
-                    button_text = str(article_counter) + '. Read'
-                    all_buttons.append([{'text': button_text, 'url': article['url']}])
-        msg += '\n'
+        if sources:
+            section = build_section(title, sources, prefix)
+            if section:
+                current_msg, overflow = add_section(current_msg, section)
+                if overflow:
+                    messages.append(current_msg)
+                    current_msg = overflow
     
-    msg += '\n_Tap numbered buttons below to read articles_'
-    
-    if len(all_buttons) <= 100:
-        reply_markup = {'inline_keyboard': all_buttons}
-        
+    if current_msg.strip():
+        messages.append(current_msg)
+
+if not token or not chat:
+    print('ERROR: Missing credentials')
+else:
+    try:
         url = 'https://api.telegram.org/bot' + token + '/sendMessage'
-        print('\nSending message with ' + str(len(all_buttons)) + ' buttons...')
         
-        response = requests.post(url, json={
-            'chat_id': chat,
-            'text': msg,
-            'parse_mode': 'Markdown',
-            'reply_markup': reply_markup
-        })
-        
-        if response.status_code == 200:
-            print('✅ Sent successfully!')
-        else:
-            print('❌ Error: ' + str(response.status_code))
-            print(response.text[:300])
-    else:
-        print('\nToo many buttons (' + str(len(all_buttons)) + '), splitting...')
-        
-        url = 'https://api.telegram.org/bot' + token + '/sendMessage'
-        requests.post(url, json={
-            'chat_id': chat,
-            'text': msg,
-            'parse_mode': 'Markdown'
-        })
-        
-        chunk_size = 50
-        for i in range(0, len(all_buttons), chunk_size):
-            chunk = all_buttons[i:i + chunk_size]
-            button_msg = 'Articles ' + str(i + 1) + '-' + str(min(i + chunk_size, len(all_buttons)))
-            requests.post(url, json={
+        for i, msg in enumerate(messages):
+            print('\nSending part ' + str(i + 1) + '/' + str(len(messages)) + ' (' + str(len(msg)) + ' chars)')
+            
+            data = {
                 'chat_id': chat,
-                'text': button_msg,
-                'reply_markup': {'inline_keyboard': chunk}
-            })
+                'text': msg,
+                'parse_mode': 'Markdown',
+                'disable_web_page_preview': True
+            }
+            
+            response = requests.post(url, json=data, timeout=30)
+            
+            if response.status_code == 200:
+                print('Sent successfully')
+            else:
+                print('Error: ' + str(response.status_code))
+                print(response.text[:300])
+            
+            if i < len(messages) - 1:
+                import time
+                time.sleep(1)
+        
+        print('\nAll messages sent!')
+            
+    except Exception as e:
+        print('Error sending: ' + str(e))
 
 print('\nScript completed')
