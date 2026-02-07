@@ -7,6 +7,9 @@ from collections import defaultdict
 token = os.getenv('TELEGRAM_BOT_TOKEN')
 chat = os.getenv('TELEGRAM_CHAT_ID')
 
+# Second recipient - the person you want to forward to
+second_chat_id = '6060496941'
+
 print('Starting Financial News Aggregator...')
 print('=' * 60)
 
@@ -43,25 +46,108 @@ feeds = {
 }
 
 keywords = [
-    'bank', 'banking', 'financial', 'finance', 'fintech',
-    'credit', 'loan', 'lender', 'capital', 'asset',
-    'rate hike', 'rate cut', 'policy rate', 'repo', 'reverse repo',
-    'bank rate', 'fed funds', 'terminal rate',
+    # Core banking & finance
+    'bank', 'banks', 'banking', 'lender', 'lenders', 'lending',
+    'financial', 'finance', 'financing', 'fintech',
+    'credit', 'loan', 'loans', 'mortgage',
+    'deposit', 'deposits', 'capital', 'asset',
+    
+    # Rates & monetary policy
+    'interest rate', 'rates', 'rate cut', 'rate hike',
+    'repo', 'reverse repo', 'bank rate', 'fed funds', 'terminal rate',
+    'policy rate', 'monetary', 'liquidity', 'tightening', 'easing',
+    
+    # Deposits (specific types)
     'deposit rate', 'term deposit', 'fixed deposit', 'fd rates',
     'savings rate', 'certificate of deposit', 'cd rates',
     'retail deposit', 'bulk deposit',
+    
+    # Money markets & wholesale funding
     'commercial paper', 'treasury bill', 't-bill',
-    'money market', 'interbank', 'overnight rate',
-    'repo market',
-    'bond yield', 'yield curve', 'credit spread',
+    'money market', 'interbank', 'overnight rate', 'repo market',
+    
+    # Markets & investments
+    'market', 'markets', 'stock', 'stocks', 'equity', 'equities',
+    'share', 'shares', 'index', 'indices',
+    'invest', 'investment', 'investor',
+    'fund', 'funds', 'mutual fund', 'etf',
+    'volatility', 'valuation',
+    
+    # Bonds & yield curve
+    'bond', 'bonds', 'bond yield', 'bond issuance',
+    'debt', 'debt issuance', 'yield', 'yields', 'yield curve',
+    'spread', 'spreads', 'credit spread',
     'sovereign yield', 'gilts', 'g-sec', 'government securities',
-    'corporate borrowing', 'bond issuance', 'debt issuance',
-    'refinancing', 'funding cost', 'cost of capital',
-    'cost of funds', 'liquidity', 'lcr', 'nsfr',
-    'alm', 'deposit mobilisation',
-    'inflation', 'cpi inflation', 'core inflation',
+    
+    # Inflation & macro
+    'inflation', 'deflation', 'cpi inflation', 'core inflation',
     'real rates', 'inflation expectations',
-    'rbi', 'mclr', 'base rate', 'crr', 'slr',
+    'fiscal', 'budget', 'deficit',
+    'economy', 'economic', 'gdp', 'growth', 'recession',
+    
+    # Central banks & regulators
+    'rbi', 'sebi', 'fed', 'ecb', 'boj',
+    'irdai', 'irda',
+    'central bank', 'regulation', 'regulatory', 'compliance',
+    'policy', 'treasury', 'sovereign',
+    
+    # Risk & balance sheet
+    'capital adequacy', 'basel',
+    'npa', 'npas', 'bad loan',
+    'provision', 'provisions',
+    'stress test', 'asset quality',
+    'leverage', 'solvency', 'liquidity coverage',
+    'lcr', 'nsfr', 'alm',
+    
+    # Corporate borrowing & funding
+    'corporate borrowing', 'refinancing',
+    'funding cost', 'cost of capital', 'cost of funds',
+    'deposit mobilisation',
+    
+    # Payments & digital
+    'payment', 'payments', 'upi', 'cards', 'digital',
+    'wallet', 'neobank',
+    
+    # Corporate & business finance
+    'earnings', 'profit', 'profits', 'loss',
+    'margin', 'margins',
+    'ipo', 'listing', 'buyback',
+    'merger', 'acquisition', 'm&a',
+    'balance sheet', 'cash flow',
+    
+    # Insurance - General
+    'insurance', 'insurer', 'insurers', 'reinsurance', 'reinsurer',
+    'underwriting', 'underwriter', 'premium', 'premiums',
+    'policyholder', 'policy', 'claim', 'claims',
+    
+    # Insurance - Life
+    'life insurance', 'lic', 'term insurance', 'endowment',
+    'ulip', 'annuity', 'pension',
+    
+    # Insurance - Health
+    'health insurance', 'mediclaim', 'hospitalisation',
+    
+    # Insurance - General/Non-Life
+    'general insurance', 'motor insurance', 'fire insurance',
+    'marine insurance', 'property insurance', 'liability insurance',
+    
+    # Insurance - Metrics & Ratios
+    'claims ratio', 'loss ratio', 'combined ratio',
+    'expense ratio', 'commission ratio',
+    'incurred claims', 'claims paid', 'claims outstanding',
+    'claim settlement ratio',
+    
+    # Insurance - Solvency & Capital
+    'solvency ratio', 'solvency margin',
+    'own funds', 'technical reserves',
+    
+    # Insurance - Distribution
+    'agent', 'broker', 'bancassurance', 'distribution',
+    
+    # India-specific
+    'psu bank', 'public sector bank',
+    'nbfc', 'hfc',
+    'mclr', 'base rate', 'crr', 'slr',
     'liquidity adjustment facility'
 ]
 
@@ -222,35 +308,44 @@ else:
     if current_msg.strip():
         messages.append(current_msg)
 
+# Send to BOTH users
 if not token or not chat:
     print('ERROR: Missing credentials')
 else:
     try:
         url = 'https://api.telegram.org/bot' + token + '/sendMessage'
         
-        for i, msg in enumerate(messages):
-            print('\nSending part ' + str(i + 1) + '/' + str(len(messages)) + ' (' + str(len(msg)) + ' chars)')
-            
-            data = {
-                'chat_id': chat,
-                'text': msg,
-                'parse_mode': 'Markdown',
-                'disable_web_page_preview': True
-            }
-            
-            response = requests.post(url, json=data, timeout=30)
-            
-            if response.status_code == 200:
-                print('Sent successfully')
-            else:
-                print('Error: ' + str(response.status_code))
-                print(response.text[:300])
-            
-            if i < len(messages) - 1:
-                import time
-                time.sleep(1)
+        # List of recipients
+        recipients = [chat, second_chat_id]
         
-        print('\nAll messages sent!')
+        for recipient in recipients:
+            print('\n' + '=' * 60)
+            print('Sending to chat ID: ' + str(recipient))
+            print('=' * 60)
+            
+            for i, msg in enumerate(messages):
+                print('\nSending part ' + str(i + 1) + '/' + str(len(messages)) + ' (' + str(len(msg)) + ' chars)')
+                
+                data = {
+                    'chat_id': recipient,
+                    'text': msg,
+                    'parse_mode': 'Markdown',
+                    'disable_web_page_preview': True
+                }
+                
+                response = requests.post(url, json=data, timeout=30)
+                
+                if response.status_code == 200:
+                    print('Sent successfully')
+                else:
+                    print('Error: ' + str(response.status_code))
+                    print(response.text[:300])
+                
+                if i < len(messages) - 1:
+                    import time
+                    time.sleep(1)
+            
+            print('\nAll messages sent to ' + str(recipient) + '!')
             
     except Exception as e:
         print('Error sending: ' + str(e))
