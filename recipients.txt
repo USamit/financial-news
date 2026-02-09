@@ -1,0 +1,13 @@
+# Financial News Recipients
+# Add one Telegram chat ID per line
+# Lines starting with # are comments and will be ignored
+
+# Your chat ID (from GitHub secret - leave this line as is)
+TELEGRAM_CHAT_ID
+
+# Additional recipients - add chat IDs below
+6060496941
+
+# Add more recipients here (one per line)
+# 1234567890
+# 9876543210
