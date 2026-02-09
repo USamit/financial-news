@@ -6,7 +6,7 @@ from collections import defaultdict
 
 token = os.getenv('TELEGRAM_BOT_TOKEN')
 chat = os.getenv('TELEGRAM_CHAT_ID')
-news_api_key = os.getenv('NEWS_API_KEY')  # Optional: Get free key from newsapi.org
+news_api_key = os.getenv('NEWS_API_KEY')
 
 # ============================================
 # LOAD RECIPIENTS from recipients.txt
@@ -14,27 +14,52 @@ news_api_key = os.getenv('NEWS_API_KEY')  # Optional: Get free key from newsapi.
 def load_recipients():
     """Load recipient chat IDs from recipients.txt file"""
     recipients = []
+    
+    # Always start with the main chat ID from secret
+    if chat:
+        recipients.append(chat)
+        print('Added primary recipient from TELEGRAM_CHAT_ID secret')
+    
+    # Try to load additional recipients from file
     try:
         with open('recipients.txt', 'r') as f:
-            for line in f:
+            print('Successfully opened recipients.txt')
+            for line_num, line in enumerate(f, 1):
+                original_line = line
                 line = line.strip()
+                
                 # Skip empty lines and comments
                 if not line or line.startswith('#'):
                     continue
-                # Replace placeholder with actual chat ID from secret
+                
+                # Skip the TELEGRAM_CHAT_ID placeholder (already added above)
                 if line == 'TELEGRAM_CHAT_ID':
-                    if chat:
-                        recipients.append(chat)
-                else:
-                    recipients.append(line)
+                    continue
+                
+                # Add the chat ID
+                recipients.append(line)
+                print('  Line ' + str(line_num) + ': Added recipient ' + line)
         
-        print('Loaded ' + str(len(recipients)) + ' recipients from recipients.txt')
+        print('Total recipients loaded: ' + str(len(recipients)))
         return recipients
+        
     except FileNotFoundError:
-        print('recipients.txt not found, using default chat ID only')
-        return [chat] if chat else []
+        print('WARNING: recipients.txt not found, using only TELEGRAM_CHAT_ID from secret')
+        return recipients
+    except Exception as e:
+        print('ERROR reading recipients.txt: ' + str(e))
+        return recipients
 
 RECIPIENTS = load_recipients()
+
+# Print recipients for debugging (first 3 digits only for privacy)
+print('\n' + '=' * 60)
+print('RECIPIENTS LOADED:')
+for i, r in enumerate(RECIPIENTS, 1):
+    print('  ' + str(i) + '. ' + r[:3] + '...')
+print('=' * 60 + '\n')
+# ============================================
+
 # ============================================
 
 # ============================================
@@ -487,18 +512,23 @@ else:
 # ============================================
 # SEND TO ALL RECIPIENTS
 # ============================================
-if not token or not RECIPIENTS:
-    print('ERROR: Missing credentials or recipients')
+# ============================================
+# SEND TO ALL RECIPIENTS
+# ============================================
+if not token:
+    print('ERROR: Missing TELEGRAM_BOT_TOKEN')
+elif not RECIPIENTS:
+    print('ERROR: No recipients found')
 else:
     try:
         url = 'https://api.telegram.org/bot' + token + '/sendMessage'
         
         print('\n' + '=' * 60)
-        print('Sending to ' + str(len(RECIPIENTS)) + ' recipients')
+        print('SENDING TO ' + str(len(RECIPIENTS)) + ' RECIPIENTS')
         print('=' * 60)
         
         for recipient in RECIPIENTS:
-            print('\nSending to chat ID: ' + str(recipient))
+            print('\nSending to chat ID: ' + str(recipient)[:3] + '...')
             
             for i, msg in enumerate(messages):
                 print('  Part ' + str(i + 1) + '/' + str(len(messages)) + ' (' + str(len(msg)) + ' chars)')
@@ -513,17 +543,20 @@ else:
                 response = requests.post(url, json=data, timeout=30)
                 
                 if response.status_code == 200:
-                    print('  ✅ Sent')
+                    print('  ✅ Sent successfully')
                 else:
                     print('  ❌ Error: ' + str(response.status_code))
+                    print('  Response: ' + response.text[:200])
                 
                 if i < len(messages) - 1:
                     import time
                     time.sleep(1)
         
-        print('\n✅ All messages sent to all recipients!')
+        print('\n✅ ALL MESSAGES SENT TO ALL RECIPIENTS!')
             
     except Exception as e:
-        print('Error sending: ' + str(e))
+        print('ERROR sending messages: ' + str(e))
+        import traceback
+        traceback.print_exc()
 
 print('\nScript completed')
