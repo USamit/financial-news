@@ -6,7 +6,6 @@ from collections import defaultdict
 
 token = os.getenv('TELEGRAM_BOT_TOKEN')
 chat = os.getenv('TELEGRAM_CHAT_ID')
-news_api_key = os.getenv('NEWS_API_KEY')
 
 # ============================================
 # LOAD RECIPIENTS from recipients.txt
@@ -25,7 +24,6 @@ def load_recipients():
         with open('recipients.txt', 'r') as f:
             print('Successfully opened recipients.txt')
             for line_num, line in enumerate(f, 1):
-                original_line = line
                 line = line.strip()
                 
                 # Skip empty lines and comments
@@ -52,33 +50,15 @@ def load_recipients():
 
 RECIPIENTS = load_recipients()
 
-# Print recipients for debugging (first 3 digits only for privacy)
 print('\n' + '=' * 60)
-print('RECIPIENTS LOADED:')
-for i, r in enumerate(RECIPIENTS, 1):
-    print('  ' + str(i) + '. ' + r[:3] + '...')
-print('=' * 60 + '\n')
-# ============================================
-
-# ============================================
-
-# ============================================
-# FEATURE TOGGLES - Enable/Disable Sources
-# ============================================
-USE_DIRECT_RSS = True      # Direct publication RSS feeds
-USE_GOOGLE_NEWS = True     # Google News RSS feeds
-USE_NEWS_API = True        # NewsAPI (requires API key)
-USE_WEB_SCRAPING = False   # Web scraping (set to True when ready)
-# ============================================
-
 print('Starting Financial News Aggregator...')
 print('=' * 60)
 
 # ============================================
-# LAYER 1: Direct RSS Feeds from Publications
+# RSS FEEDS - Only Verified Working Feeds
 # ============================================
-direct_rss_feeds = {
-    # Economic Times
+feeds = {
+    # Economic Times (6 feeds)
     'ET Markets': 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms',
     'ET Banking': 'https://economictimes.indiatimes.com/industry/banking/finance/banking/rssfeeds/13358256.cms',
     'ET Finance': 'https://economictimes.indiatimes.com/industry/banking/finance/rssfeeds/13358259.cms',
@@ -86,7 +66,7 @@ direct_rss_feeds = {
     'ET Stocks': 'https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms',
     'ET Economy': 'https://economictimes.indiatimes.com/news/economy/rssfeeds/1373380680.cms',
     
-    # Mint
+    # Mint (6 feeds)
     'Mint Markets': 'https://www.livemint.com/rss/markets',
     'Mint Money': 'https://www.livemint.com/rss/money',
     'Mint Banking': 'https://www.livemint.com/rss/industry/banking',
@@ -94,7 +74,7 @@ direct_rss_feeds = {
     'Mint Companies': 'https://www.livemint.com/rss/companies',
     'Mint Economy': 'https://www.livemint.com/rss/news/india',
     
-    # Financial Times
+    # Financial Times (6 feeds)
     'FT Markets': 'https://www.ft.com/markets?format=rss',
     'FT Banking': 'https://www.ft.com/companies/financials?format=rss',
     'FT World Economy': 'https://www.ft.com/world/economy?format=rss',
@@ -102,42 +82,17 @@ direct_rss_feeds = {
     'FT India': 'https://www.ft.com/india?format=rss',
     'FT Asia Markets': 'https://www.ft.com/markets/asia-pacific?format=rss',
     
-    # Wall Street Journal
+    # Wall Street Journal (5 feeds)
     'WSJ Markets': 'https://feeds.content.dowjones.io/public/rss/RSSMarketsMain',
     'WSJ Finance': 'https://feeds.content.dowjones.io/public/rss/WSJcomUSBusiness',
     'WSJ Economy': 'https://feeds.content.dowjones.io/public/rss/RSSWorldNews',
     'WSJ India': 'https://feeds.content.dowjones.io/public/rss/WSJcomIndia',
     'WSJ Asia': 'https://feeds.content.dowjones.io/public/rss/WSJcomAsia',
-    
-    # Bloomberg (if RSS available)
-    'Bloomberg Markets': 'https://www.bloomberg.com/feed/podcast/markets.xml',
-    
-    # Reuters
-    'Reuters Business': 'https://www.reuters.com/rssfeed/businessNews',
-    'Reuters Markets': 'https://www.reuters.com/rssfeed/marketsNews',
 }
 
 # ============================================
-# LAYER 2: Google News RSS Feeds (Backup)
+# COMPREHENSIVE KEYWORD LIST
 # ============================================
-google_news_feeds = {
-    'Google Banking': 'https://news.google.com/rss/search?q=banking+finance+india+when:1d&hl=en-IN&gl=IN&ceid=IN:en',
-    'Google RBI': 'https://news.google.com/rss/search?q=RBI+reserve+bank+india+when:1d&hl=en-IN&gl=IN&ceid=IN:en',
-    'Google Insurance': 'https://news.google.com/rss/search?q=insurance+IRDAI+LIC+india+when:1d&hl=en-IN&gl=IN&ceid=IN:en',
-    'Google Markets': 'https://news.google.com/rss/search?q=stock+market+sensex+nifty+BSE+NSE+when:1d&hl=en-IN&gl=IN&ceid=IN:en',
-    'Google Economy': 'https://news.google.com/rss/search?q=india+economy+inflation+GDP+when:1d&hl=en-IN&gl=IN&ceid=IN:en',
-    'Google MoneyControl': 'https://news.google.com/rss/search?q=site:moneycontrol.com+banking+OR+finance+OR+markets+when:1d&hl=en-IN&gl=IN&ceid=IN:en',
-    'Google Bloomberg India': 'https://news.google.com/rss/search?q=site:bloomberg.com+india+banking+OR+finance+when:1d&hl=en&gl=US&ceid=US:en',
-    'Google Reuters India': 'https://news.google.com/rss/search?q=site:reuters.com+india+banking+OR+finance+when:1d&hl=en&gl=US&ceid=US:en',
-}
-
-# Combine feeds based on toggles
-feeds = {}
-if USE_DIRECT_RSS:
-    feeds.update(direct_rss_feeds)
-if USE_GOOGLE_NEWS:
-    feeds.update(google_news_feeds)
-
 keywords = [
     # Core banking & finance
     'bank', 'banks', 'banking', 'lender', 'lenders', 'lending',
@@ -244,7 +199,7 @@ keywords = [
     'liquidity adjustment facility',
     
     # Publication names
-    'barrons', "barron's", 'bloomberg', 'reuters', 'moneycontrol'
+    'barrons', "barron's"
 ]
 
 articles = []
@@ -346,67 +301,13 @@ for source, url in feeds.items():
         continue
 
 # ============================================
-# LAYER 3: NewsAPI (if enabled and key available)
+# SUMMARY
 # ============================================
-if USE_NEWS_API and news_api_key:
-    print('\n' + '=' * 60)
-    print('FETCHING FROM NEWSAPI')
-    print('=' * 60)
-    try:
-        newsapi_url = 'https://newsapi.org/v2/everything'
-        params = {
-            'q': 'banking OR finance OR insurance OR RBI OR SEBI OR IRDAI OR markets OR stocks',
-            'domains': 'economictimes.indiatimes.com,livemint.com,moneycontrol.com,bloomberg.com,reuters.com,ft.com,wsj.com',
-            'language': 'en',
-            'sortBy': 'publishedAt',
-            'from': (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'),
-            'pageSize': 100,
-            'apiKey': news_api_key
-        }
-        
-        response = requests.get(newsapi_url, params=params, timeout=30)
-        
-        if response.status_code == 200:
-            newsapi_articles = response.json().get('articles', [])
-            print('NewsAPI returned ' + str(len(newsapi_articles)) + ' articles')
-            
-            newsapi_count = 0
-            for article in newsapi_articles:
-                link = article.get('url', '')
-                if link and link not in seen_urls:
-                    title = article.get('title', '')
-                    description = article.get('description', '') or ''
-                    text = (title + ' ' + description).lower()
-                    
-                    if any(kw in text for kw in keywords):
-                        seen_urls.add(link)
-                        pub_date_str = article.get('publishedAt', '')
-                        try:
-                            pub_date = datetime.strptime(pub_date_str, '%Y-%m-%dT%H:%M:%SZ')
-                        except:
-                            pub_date = datetime.now()
-                        
-                        articles.append({
-                            'source': 'NewsAPI',
-                            'title': title,
-                            'url': link,
-                            'time': pub_date.strftime('%H:%M'),
-                            'date': pub_date
-                        })
-                        newsapi_count += 1
-            
-            print('Added ' + str(newsapi_count) + ' unique articles from NewsAPI')
-        else:
-            print('NewsAPI error: ' + str(response.status_code))
-            
-    except Exception as e:
-        print('NewsAPI error: ' + str(e))
-
 print('\n' + '=' * 60)
 print('SUMMARY BY PUBLICATION')
 print('=' * 60)
 
-for pub in ['ET', 'Mint', 'FT', 'WSJ', 'Google', 'Reuters', 'Bloomberg']:
+for pub in ['ET', 'Mint', 'FT', 'WSJ']:
     pub_feeds = {k: v for k, v in feed_stats.items() if k.startswith(pub)}
     if pub_feeds:
         total_rel = sum(f['relevant'] for f in pub_feeds.values())
@@ -418,9 +319,6 @@ for pub in ['ET', 'Mint', 'FT', 'WSJ', 'Google', 'Reuters', 'Bloomberg']:
 
 print('\nTotal unique articles: ' + str(len(articles)))
 print('Total Barrons articles: ' + str(len(barrons_articles)))
-if USE_NEWS_API and news_api_key:
-    newsapi_articles_count = len([a for a in articles if a['source'] == 'NewsAPI'])
-    print('NewsAPI contributed: ' + str(newsapi_articles_count) + ' articles')
 print('=' * 60)
 
 # ============================================
@@ -447,10 +345,6 @@ else:
     mint_sources = sorted([s for s in by_source.keys() if s.startswith('Mint ')])
     ft_sources = sorted([s for s in by_source.keys() if s.startswith('FT ')])
     wsj_sources = sorted([s for s in by_source.keys() if s.startswith('WSJ ')])
-    google_sources = sorted([s for s in by_source.keys() if s.startswith('Google ')])
-    reuters_sources = sorted([s for s in by_source.keys() if s.startswith('Reuters ')])
-    bloomberg_sources = sorted([s for s in by_source.keys() if s.startswith('Bloomberg ')])
-    newsapi_sources = [s for s in by_source.keys() if s == 'NewsAPI']
     
     def add_section(msg, section_text):
         if len(msg) + len(section_text) > 3800:
@@ -477,11 +371,7 @@ else:
         ('ECONOMIC TIMES', et_sources, 'ET '),
         ('MINT', mint_sources, 'Mint '),
         ('FINANCIAL TIMES', ft_sources, 'FT '),
-        ('WALL STREET JOURNAL', wsj_sources, 'WSJ '),
-        ('REUTERS', reuters_sources, 'Reuters '),
-        ('BLOOMBERG', bloomberg_sources, 'Bloomberg '),
-        ('GOOGLE NEWS', google_sources, 'Google '),
-        ('NEWSAPI', newsapi_sources, '')
+        ('WALL STREET JOURNAL', wsj_sources, 'WSJ ')
     ]:
         if sources:
             section = build_section(title, sources, prefix)
@@ -512,13 +402,10 @@ else:
 # ============================================
 # SEND TO ALL RECIPIENTS
 # ============================================
-# ============================================
-# SEND TO ALL RECIPIENTS
-# ============================================
 if not token:
-    print('ERROR: Missing TELEGRAM_BOT_TOKEN')
+    print('\nERROR: Missing TELEGRAM_BOT_TOKEN')
 elif not RECIPIENTS:
-    print('ERROR: No recipients found')
+    print('\nERROR: No recipients found')
 else:
     try:
         url = 'https://api.telegram.org/bot' + token + '/sendMessage'
@@ -543,7 +430,7 @@ else:
                 response = requests.post(url, json=data, timeout=30)
                 
                 if response.status_code == 200:
-                    print('  ✅ Sent successfully')
+                    print('  ✅ Sent')
                 else:
                     print('  ❌ Error: ' + str(response.status_code))
                     print('  Response: ' + response.text[:200])
@@ -552,11 +439,9 @@ else:
                     import time
                     time.sleep(1)
         
-        print('\n✅ ALL MESSAGES SENT TO ALL RECIPIENTS!')
+        print('\n✅ ALL MESSAGES SENT!')
             
     except Exception as e:
-        print('ERROR sending messages: ' + str(e))
-        import traceback
-        traceback.print_exc()
+        print('\nERROR sending messages: ' + str(e))
 
 print('\nScript completed')
