@@ -7,8 +7,19 @@ from collections import defaultdict
 token = os.getenv('TELEGRAM_BOT_TOKEN')
 chat = os.getenv('TELEGRAM_CHAT_ID')
 
-# Second recipient - the person you want to forward to
-second_chat_id = '6060496941'
+# ============================================
+# RECIPIENT LIST - Add/Remove Recipients Here
+# ============================================
+# Just add or remove chat IDs from this list!
+# To add someone new: Get their Telegram chat ID and add it below
+RECIPIENTS = [
+    chat,           # Your chat ID (from secret)
+    '6060496941',   # Second recipient
+    '6701448643', # Shaunak
+    # '6701448643', # Add more recipients here (uncomment and replace with actual ID)
+    # '9876543210', # Another example
+]
+# ============================================
 
 print('Starting Financial News Aggregator...')
 print('=' * 60)
@@ -26,10 +37,6 @@ feeds = {
     'Mint Insurance': 'https://www.livemint.com/rss/insurance',
     'Mint Companies': 'https://www.livemint.com/rss/companies',
     'Mint Economy': 'https://www.livemint.com/rss/news/india',
-    'MC Business': 'https://www.moneycontrol.com/rss/business.xml',
-    'MC Markets': 'https://www.moneycontrol.com/rss/marketedge.xml',
-    'MC Stocks': 'https://www.moneycontrol.com/rss/latestnews.xml',
-    'MC Banking': 'https://www.moneycontrol.com/rss/MCtopnews.xml',
     'FT Markets': 'https://www.ft.com/markets?format=rss',
     'FT Banking': 'https://www.ft.com/companies/financials?format=rss',
     'FT World Economy': 'https://www.ft.com/world/economy?format=rss',
@@ -41,8 +48,6 @@ feeds = {
     'WSJ Economy': 'https://feeds.content.dowjones.io/public/rss/RSSWorldNews',
     'WSJ India': 'https://feeds.content.dowjones.io/public/rss/WSJcomIndia',
     'WSJ Asia': 'https://feeds.content.dowjones.io/public/rss/WSJcomAsia',
-    'Barrons Markets': 'https://www.barrons.com/rss',
-    'Barrons Asia': 'https://www.barrons.com/articles/asia?mod=rss_asia'
 }
 
 keywords = [
@@ -148,10 +153,14 @@ keywords = [
     'psu bank', 'public sector bank',
     'nbfc', 'hfc',
     'mclr', 'base rate', 'crr', 'slr',
-    'liquidity adjustment facility'
+    'liquidity adjustment facility',
+    
+    # Publication names
+    'barrons', "barron's"
 ]
 
 articles = []
+barrons_articles = []
 feed_stats = {}
 seen_urls = set()
 
@@ -165,11 +174,12 @@ for source, url in feeds.items():
         
         if not feed.entries:
             print('  No entries found')
-            feed_stats[source] = {'total': 0, 'recent': 0, 'relevant': 0}
+            feed_stats[source] = {'total': 0, 'recent': 0, 'relevant': 0, 'barrons': 0}
             continue
         
         recent_count = 0
         source_count = 0
+        barrons_count = 0
         
         for entry in feed.entries[:50]:
             try:
@@ -200,16 +210,25 @@ for source, url in feeds.items():
                 text = (title + ' ' + str(description)).lower()
                 is_relevant = any(kw in text for kw in keywords)
                 
+                is_barrons = 'barron' in text
+                
                 if is_relevant:
                     seen_urls.add(link)
                     time_str = pub_date.strftime('%H:%M') if pub_date else 'Recent'
-                    articles.append({
+                    article_data = {
                         'source': source,
                         'title': title,
                         'url': link,
                         'time': time_str,
                         'date': pub_date or datetime.now()
-                    })
+                    }
+                    
+                    if is_barrons:
+                        barrons_articles.append(article_data)
+                        barrons_count += 1
+                    else:
+                        articles.append(article_data)
+                    
                     source_count += 1
                     
                     if source_count >= 8:
@@ -221,35 +240,44 @@ for source, url in feeds.items():
         feed_stats[source] = {
             'total': total_entries,
             'recent': recent_count,
-            'relevant': source_count
+            'relevant': source_count,
+            'barrons': barrons_count
         }
         
         print('  Recent (24 hrs): ' + str(recent_count))
         print('  Relevant: ' + str(source_count))
+        if barrons_count > 0:
+            print('  Barrons articles: ' + str(barrons_count))
         
     except Exception as e:
         print('  Error: ' + str(e))
-        feed_stats[source] = {'total': 0, 'recent': 0, 'relevant': 0}
+        feed_stats[source] = {'total': 0, 'recent': 0, 'relevant': 0, 'barrons': 0}
         continue
 
 print('\n' + '=' * 60)
 print('SUMMARY BY PUBLICATION')
 print('=' * 60)
 
-for pub in ['ET', 'Mint', 'MC', 'FT', 'WSJ', 'Barrons']:
+for pub in ['ET', 'Mint', 'FT', 'WSJ']:
     pub_feeds = {k: v for k, v in feed_stats.items() if k.startswith(pub)}
     if pub_feeds:
         total_rel = sum(f['relevant'] for f in pub_feeds.values())
-        print(pub + ': ' + str(total_rel) + ' articles from ' + str(len(pub_feeds)) + ' feeds')
+        total_barrons = sum(f['barrons'] for f in pub_feeds.values())
+        if total_barrons > 0:
+            print(pub + ': ' + str(total_rel) + ' articles (' + str(total_barrons) + ' Barrons) from ' + str(len(pub_feeds)) + ' feeds')
+        else:
+            print(pub + ': ' + str(total_rel) + ' articles from ' + str(len(pub_feeds)) + ' feeds')
 
 print('\nTotal unique articles: ' + str(len(articles)))
+print('Total Barrons articles: ' + str(len(barrons_articles)))
 print('=' * 60)
 
-if not articles:
+if not articles and not barrons_articles:
     msg = '*Financial News Digest*\n' + datetime.now().strftime('%B %d, %Y') + '\n\nNo relevant articles found today.'
     messages = [msg]
 else:
     articles.sort(key=lambda x: x['date'], reverse=True)
+    barrons_articles.sort(key=lambda x: x['date'], reverse=True)
     
     by_source = defaultdict(list)
     for article in articles:
@@ -258,15 +286,13 @@ else:
     messages = []
     current_msg = '*Financial News Digest*\n'
     current_msg = current_msg + datetime.now().strftime('%B %d, %Y') + '\n\n'
-    current_msg = current_msg + str(len(articles)) + ' unique articles from ' + str(len(by_source)) + ' sources\n'
+    current_msg = current_msg + str(len(articles) + len(barrons_articles)) + ' unique articles from ' + str(len(by_source)) + ' sources\n'
     current_msg = current_msg + '━━━━━━━━━━━━━━━━━\n\n'
     
     et_sources = sorted([s for s in by_source.keys() if s.startswith('ET ')])
     mint_sources = sorted([s for s in by_source.keys() if s.startswith('Mint ')])
-    mc_sources = sorted([s for s in by_source.keys() if s.startswith('MC ')])
     ft_sources = sorted([s for s in by_source.keys() if s.startswith('FT ')])
     wsj_sources = sorted([s for s in by_source.keys() if s.startswith('WSJ ')])
-    barrons_sources = sorted([s for s in by_source.keys() if 'Barrons' in s])
     
     def add_section(msg, section_text):
         if len(msg) + len(section_text) > 3800:
@@ -292,10 +318,8 @@ else:
     for title, sources, prefix in [
         ('ECONOMIC TIMES', et_sources, 'ET '),
         ('MINT', mint_sources, 'Mint '),
-        ('MONEYCONTROL', mc_sources, 'MC '),
         ('FINANCIAL TIMES', ft_sources, 'FT '),
-        ('WALL STREET JOURNAL', wsj_sources, 'WSJ '),
-        ('BARRONS', barrons_sources, 'Barrons ')
+        ('WALL STREET JOURNAL', wsj_sources, 'WSJ ')
     ]:
         if sources:
             section = build_section(title, sources, prefix)
@@ -305,26 +329,42 @@ else:
                     messages.append(current_msg)
                     current_msg = overflow
     
+    if barrons_articles:
+        barrons_section = '*BARRONS*\n'
+        barrons_section = barrons_section + '_Republished Articles_\n'
+        for i, article in enumerate(barrons_articles[:10], 1):
+            title_short = article['title']
+            if len(title_short) > 75:
+                title_short = title_short[:72] + '...'
+            barrons_section = barrons_section + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
+        barrons_section = barrons_section + '\n'
+        
+        current_msg, overflow = add_section(current_msg, barrons_section)
+        if overflow:
+            messages.append(current_msg)
+            current_msg = overflow
+    
     if current_msg.strip():
         messages.append(current_msg)
 
-# Send to BOTH users
 if not token or not chat:
     print('ERROR: Missing credentials')
 else:
     try:
         url = 'https://api.telegram.org/bot' + token + '/sendMessage'
         
-        # List of recipients
-        recipients = [chat, second_chat_id]
+        # Filter out None values (in case chat secret is not set)
+        recipients = [r for r in RECIPIENTS if r]
+        
+        print('\n' + '=' * 60)
+        print('Sending to ' + str(len(recipients)) + ' recipients')
+        print('=' * 60)
         
         for recipient in recipients:
-            print('\n' + '=' * 60)
-            print('Sending to chat ID: ' + str(recipient))
-            print('=' * 60)
+            print('\nSending to chat ID: ' + str(recipient))
             
             for i, msg in enumerate(messages):
-                print('\nSending part ' + str(i + 1) + '/' + str(len(messages)) + ' (' + str(len(msg)) + ' chars)')
+                print('  Part ' + str(i + 1) + '/' + str(len(messages)) + ' (' + str(len(msg)) + ' chars)')
                 
                 data = {
                     'chat_id': recipient,
@@ -336,16 +376,15 @@ else:
                 response = requests.post(url, json=data, timeout=30)
                 
                 if response.status_code == 200:
-                    print('Sent successfully')
+                    print('  ✅ Sent')
                 else:
-                    print('Error: ' + str(response.status_code))
-                    print(response.text[:300])
+                    print('  ❌ Error: ' + str(response.status_code))
                 
                 if i < len(messages) - 1:
                     import time
                     time.sleep(1)
-            
-            print('\nAll messages sent to ' + str(recipient) + '!')
+        
+        print('\n✅ All messages sent to all recipients!')
             
     except Exception as e:
         print('Error sending: ' + str(e))
