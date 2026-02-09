@@ -6,7 +6,10 @@
 TELEGRAM_CHAT_ID
 
 # Additional recipients - add chat IDs below
+# Priyanka
 6060496941
+# Shaunak
+6701448643
 
 # Add more recipients here (one per line)
 # 1234567890
