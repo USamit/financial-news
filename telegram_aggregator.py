@@ -99,6 +99,14 @@ def load_feeds():
         print('⚠ Error loading feeds: ' + str(e))
         return {}
 
+def escape_markdown(text):
+    """Escape special markdown characters for Telegram"""
+    special_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
+    for char in special_chars:
+        text = text.replace(char, '\\' + char)
+    return text
+
+
 # Load configuration
 RECIPIENTS = load_recipients()
 keywords = load_keywords()
@@ -270,7 +278,10 @@ else:
                     title_short = article['title']
                     if len(title_short) > 75:
                         title_short = title_short[:72] + '...'
-                    section = section + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
+                    # Escape special characters in title for Telegram Markdown
+                    title_escaped = title_short.replace('[', '\\[').replace(']', '\\]').replace('(', '\\(').replace(')', '\\)')
+                    section = section + str(i) + '. [' + title_escaped + '](' + article['url'] + ')\n'
+        
         return section + '\n'
     
     for title, sources, prefix in [
