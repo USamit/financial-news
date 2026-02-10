@@ -218,8 +218,16 @@ print('\n' + '=' * 60)
 print('SUMMARY BY PUBLICATION')
 print('=' * 60)
 
-for pub in ['ET', 'Mint', 'FT', 'WSJ', 'Google']:
-    pub_feeds = {k: v for k, v in feed_stats.items() if k.startswith(pub)}
+# Dynamically detect all publications
+all_publications = set()
+for source in feed_stats.keys():
+    # Extract publication name (everything before first space)
+    if ' ' in source:
+        pub = source.split(' ')[0]
+        all_publications.add(pub)
+
+for pub in sorted(all_publications):
+    pub_feeds = {k: v for k, v in feed_stats.items() if k.startswith(pub + ' ')}
     if pub_feeds:
         total_rel = sum(f['relevant'] for f in pub_feeds.values())
         print(pub + ': ' + str(total_rel) + ' articles from ' + str(len(pub_feeds)) + ' feeds')
@@ -246,66 +254,65 @@ else:
     current_msg = current_msg + str(len(articles)) + ' unique articles from ' + str(len(by_source)) + ' sources\n'
     current_msg = current_msg + '━━━━━━━━━━━━━━━━━\n\n'
     
-    et_sources = sorted([s for s in by_source.keys() if s.startswith('ET ')])
-    mint_sources = sorted([s for s in by_source.keys() if s.startswith('Mint ')])
-    ft_sources = sorted([s for s in by_source.keys() if s.startswith('FT ')])
-    wsj_sources = sorted([s for s in by_source.keys() if s.startswith('WSJ ')])
-    google_sources = sorted([s for s in by_source.keys() if s.startswith('Google ')])
+    # ============================================
+    # DYNAMIC PUBLICATION DETECTION
+    # ============================================
+    # Automatically detect all publications and group sources
+    publications = defaultdict(list)
+    
+    for source in by_source.keys():
+        # Extract publication prefix (everything before first space)
+        if ' ' in source:
+            pub_prefix = source.split(' ')[0]
+            publications[pub_prefix].append(source)
+        else:
+            # If no space, use the whole source name as publication
+            publications[source].append(source)
+    
+    # Sort publications alphabetically
+    sorted_pubs = sorted(publications.keys())
     
     def add_section(msg, section_text):
         if len(msg) + len(section_text) > 3800:
             return msg, section_text
         return msg + section_text, ''
     
-    def build_section(title, sources_list, prefix='', is_google=False):
+    def build_section(title, sources_list, prefix=''):
         if not sources_list:
             return ''
         section = '*' + title + '*\n'
-        for source in sources_list:
+        for source in sorted(sources_list):
             items = by_source[source][:10]
             if items:
                 items_sorted = sorted(items, key=lambda x: x['date'], reverse=True)
-                
-                # For Google News, use plain text without underscores
-                if is_google:
-                    section = section + source.replace(prefix, '') + '\n'
-                else:
-                    section = section + '_' + source.replace(prefix, '') + '_\n'
-                
+                section = section + '_' + source.replace(prefix, '') + '_\n'
                 for i, article in enumerate(items_sorted, 1):
                     title_short = article['title']
                     if len(title_short) > 75:
                         title_short = title_short[:72] + '...'
-                    
-                    # For Google News, use plain text + URL (no Markdown)
-                    if is_google:
-                        section = section + str(i) + '. ' + title_short + '\n   ' + article['url'] + '\n'
-                    else:
-                        section = section + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
+                    section = section + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
         return section + '\n'
     
-    for title, sources, prefix in [
-        ('ECONOMIC TIMES', et_sources, 'ET '),
-        ('MINT', mint_sources, 'Mint '),
-        ('FINANCIAL TIMES', ft_sources, 'FT '),
-        ('WALL STREET JOURNAL', wsj_sources, 'WSJ ')
-    ]:
-        if sources:
-            section = build_section(title, sources, prefix, is_google=False)
+    # Build sections dynamically for all detected publications
+    for pub_prefix in sorted_pubs:
+        pub_sources = publications[pub_prefix]
+        if pub_sources:
+            # Create nice title (uppercase)
+            if pub_prefix == 'ET':
+                pub_title = 'ECONOMIC TIMES'
+            elif pub_prefix == 'FT':
+                pub_title = 'FINANCIAL TIMES'
+            elif pub_prefix == 'WSJ':
+                pub_title = 'WALL STREET JOURNAL'
+            else:
+                pub_title = pub_prefix.upper()
+            
+            section = build_section(pub_title, pub_sources, pub_prefix + ' ')
             if section:
                 current_msg, overflow = add_section(current_msg, section)
                 if overflow:
                     messages.append(current_msg)
                     current_msg = overflow
-    
-    # Google News section - plain text, no Markdown
-    if google_sources:
-        section = build_section('GOOGLE NEWS', google_sources, 'Google ', is_google=True)
-        if section:
-            current_msg, overflow = add_section(current_msg, section)
-            if overflow:
-                messages.append(current_msg)
-                current_msg = overflow
     
     if current_msg.strip():
         messages.append(current_msg)
