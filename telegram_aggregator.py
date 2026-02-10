@@ -239,17 +239,6 @@ else:
     by_source = defaultdict(list)
     for article in articles:
         by_source[article['source']].append(article)
-
-    # DEBUG: Print all sources
-    print('\nDEBUG - Sources in by_source:')
-    for source in sorted(by_source.keys()):
-        print('  ' + source + ': ' + str(len(by_source[source])) + ' articles')
-    print('\nDEBUG - Google sources found: ' + str(len(google_sources)))
-    for gs in google_sources:
-        print('  ' + gs)
-    
-        
-            
     
     messages = []
     current_msg = '*Financial News Digest*\n'
@@ -273,7 +262,7 @@ else:
             return ''
         section = '*' + title + '*\n'
         for source in sources_list:
-            items = by_source[source][:10]  # Max 10 articles per source
+            items = by_source[source][:10]
             if items:
                 items_sorted = sorted(items, key=lambda x: x['date'], reverse=True)
                 section = section + '_' + source.replace(prefix, '') + '_\n'
