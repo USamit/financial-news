@@ -99,14 +99,6 @@ def load_feeds():
         print('⚠ Error loading feeds: ' + str(e))
         return {}
 
-def escape_markdown(text):
-    """Escape special markdown characters for Telegram"""
-    special_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
-    for char in special_chars:
-        text = text.replace(char, '\\' + char)
-    return text
-
-
 # Load configuration
 RECIPIENTS = load_recipients()
 keywords = load_keywords()
@@ -265,7 +257,7 @@ else:
             return msg, section_text
         return msg + section_text, ''
     
-    def build_section(title, sources_list, prefix=''):
+    def build_section(title, sources_list, prefix='', is_google=False):
         if not sources_list:
             return ''
         section = '*' + title + '*\n'
@@ -278,26 +270,36 @@ else:
                     title_short = article['title']
                     if len(title_short) > 75:
                         title_short = title_short[:72] + '...'
-                    # Escape special characters in title for Telegram Markdown
-                    title_escaped = title_short.replace('[', '\\[').replace(']', '\\]').replace('(', '\\(').replace(')', '\\)')
-                    section = section + str(i) + '. [' + title_escaped + '](' + article['url'] + ')\n'
-        
+                    
+                    # For Google News, use plain text + URL (no Markdown links)
+                    if is_google:
+                        section = section + str(i) + '. ' + title_short + '\n   ' + article['url'] + '\n'
+                    else:
+                        section = section + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
         return section + '\n'
     
     for title, sources, prefix in [
         ('ECONOMIC TIMES', et_sources, 'ET '),
         ('MINT', mint_sources, 'Mint '),
         ('FINANCIAL TIMES', ft_sources, 'FT '),
-        ('WALL STREET JOURNAL', wsj_sources, 'WSJ '),
-        ('GOOGLE NEWS', google_sources, 'Google ')
+        ('WALL STREET JOURNAL', wsj_sources, 'WSJ ')
     ]:
         if sources:
-            section = build_section(title, sources, prefix)
+            section = build_section(title, sources, prefix, is_google=False)
             if section:
                 current_msg, overflow = add_section(current_msg, section)
                 if overflow:
                     messages.append(current_msg)
                     current_msg = overflow
+    
+    # Google News section - plain URLs
+    if google_sources:
+        section = build_section('GOOGLE NEWS', google_sources, 'Google ', is_google=True)
+        if section:
+            current_msg, overflow = add_section(current_msg, section)
+            if overflow:
+                messages.append(current_msg)
+                current_msg = overflow
     
     if current_msg.strip():
         messages.append(current_msg)
