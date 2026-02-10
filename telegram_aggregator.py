@@ -265,13 +265,19 @@ else:
             items = by_source[source][:10]
             if items:
                 items_sorted = sorted(items, key=lambda x: x['date'], reverse=True)
-                section = section + '_' + source.replace(prefix, '') + '_\n'
+                
+                # For Google News, use plain text without underscores
+                if is_google:
+                    section = section + source.replace(prefix, '') + '\n'
+                else:
+                    section = section + '_' + source.replace(prefix, '') + '_\n'
+                
                 for i, article in enumerate(items_sorted, 1):
                     title_short = article['title']
                     if len(title_short) > 75:
                         title_short = title_short[:72] + '...'
                     
-                    # For Google News, use plain text + URL (no Markdown links)
+                    # For Google News, use plain text + URL (no Markdown)
                     if is_google:
                         section = section + str(i) + '. ' + title_short + '\n   ' + article['url'] + '\n'
                     else:
@@ -292,7 +298,7 @@ else:
                     messages.append(current_msg)
                     current_msg = overflow
     
-    # Google News section - plain URLs
+    # Google News section - plain text, no Markdown
     if google_sources:
         section = build_section('GOOGLE NEWS', google_sources, 'Google ', is_google=True)
         if section:
@@ -324,15 +330,6 @@ else:
             
             for i, msg in enumerate(messages):
                 print('  Part ' + str(i + 1) + '/' + str(len(messages)))
-                
-                # DEBUG: Print message preview for Part 6
-                if i == 5:
-                    print('  DEBUG - Part 6 content preview:')
-                    print('  Length: ' + str(len(msg)) + ' chars')
-                    print('  First 500 chars:')
-                    print(msg[:500])
-                    print('  Last 500 chars:')
-                    print(msg[-500:])
                 
                 data = {
                     'chat_id': recipient,
