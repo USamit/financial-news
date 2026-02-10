@@ -3,6 +3,10 @@ from datetime import datetime, timedelta
 import feedparser
 import requests
 from collections import defaultdict
+import socket
+
+# Set global timeout for all network operations
+socket.setdefaulttimeout(10)  # 10 seconds max per feed
 
 token = os.getenv('TELEGRAM_BOT_TOKEN')
 chat = os.getenv('TELEGRAM_CHAT_ID')
@@ -213,21 +217,32 @@ seen_urls = set()
 for source, url in feeds.items():
     try:
         print('\n' + source + ':')
-        feed = feedparser.parse(url)
+        
+        # Parse feed with timeout
+        try:
+            feed = feedparser.parse(url)
+        except socket.timeout:
+            print('  TIMEOUT - Skipping this feed')
+            feed_stats[source] = {'total': 0, 'recent': 0, 'relevant': 0, 'barrons': 0, 'timeout': True}
+            continue
+        except Exception as e:
+            print('  Error parsing: ' + str(e)[:50])
+            feed_stats[source] = {'total': 0, 'recent': 0, 'relevant': 0, 'barrons': 0, 'timeout': False}
+            continue
         
         total_entries = len(feed.entries)
         print('  Total entries: ' + str(total_entries))
         
         if not feed.entries:
             print('  No entries found')
-            feed_stats[source] = {'total': 0, 'recent': 0, 'relevant': 0, 'barrons': 0}
+            feed_stats[source] = {'total': 0, 'recent': 0, 'relevant': 0, 'barrons': 0, 'timeout': False}
             continue
         
         recent_count = 0
         source_count = 0
         barrons_count = 0
         
-        for entry in feed.entries[:50]:
+        for entry in feed.entries[:40]:  # Reduced from 50 to 40 for speed
             try:
                 pub_date = None
                 if hasattr(entry, 'published_parsed') and entry.published_parsed:
@@ -287,7 +302,8 @@ for source, url in feeds.items():
             'total': total_entries,
             'recent': recent_count,
             'relevant': source_count,
-            'barrons': barrons_count
+            'barrons': barrons_count,
+            'timeout': False
         }
         
         print('  Recent (24 hrs): ' + str(recent_count))
@@ -295,9 +311,13 @@ for source, url in feeds.items():
         if barrons_count > 0:
             print('  Barrons articles: ' + str(barrons_count))
         
+    except socket.timeout:
+        print('  TIMEOUT - Skipping this feed')
+        feed_stats[source] = {'total': 0, 'recent': 0, 'relevant': 0, 'barrons': 0, 'timeout': True}
+        continue
     except Exception as e:
-        print('  Error: ' + str(e))
-        feed_stats[source] = {'total': 0, 'recent': 0, 'relevant': 0, 'barrons': 0}
+        print('  Error: ' + str(e)[:50])
+        feed_stats[source] = {'total': 0, 'recent': 0, 'relevant': 0, 'barrons': 0, 'timeout': False}
         continue
 
 # ============================================
@@ -306,6 +326,10 @@ for source, url in feeds.items():
 print('\n' + '=' * 60)
 print('SUMMARY BY PUBLICATION')
 print('=' * 60)
+
+timeout_count = sum(1 for f in feed_stats.values() if f.get('timeout', False))
+if timeout_count > 0:
+    print('⚠️  ' + str(timeout_count) + ' feeds timed out (>10 sec)')
 
 for pub in ['ET', 'Mint', 'FT', 'WSJ']:
     pub_feeds = {k: v for k, v in feed_stats.items() if k.startswith(pub)}
@@ -427,13 +451,19 @@ else:
                     'disable_web_page_preview': True
                 }
                 
-                response = requests.post(url, json=data, timeout=30)
-                
-                if response.status_code == 200:
-                    print('  ✅ Sent')
-                else:
-                    print('  ❌ Error: ' + str(response.status_code))
-                    print('  Response: ' + response.text[:200])
+                # Send with timeout
+                try:
+                    response = requests.post(url, json=data, timeout=15)
+                    
+                    if response.status_code == 200:
+                        print('  ✅ Sent')
+                    else:
+                        print('  ❌ Error: ' + str(response.status_code))
+                        print('  Response: ' + response.text[:200])
+                except requests.Timeout:
+                    print('  ⚠️  Telegram API timeout - message may not have sent')
+                except Exception as e:
+                    print('  ❌ Error: ' + str(e)[:100])
                 
                 if i < len(messages) - 1:
                     import time
