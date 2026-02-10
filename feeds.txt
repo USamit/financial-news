@@ -2,7 +2,7 @@
 # Format: Source Name|Feed URL
 # Lines starting with # are comments
 
-# Economic Times - Direct RSS
+# Economic Times - Direct RSS (6 feeds)
 ET Markets|https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms
 ET Banking|https://economictimes.indiatimes.com/industry/banking/finance/banking/rssfeeds/13358256.cms
 ET Finance|https://economictimes.indiatimes.com/industry/banking/finance/rssfeeds/13358259.cms
@@ -10,31 +10,48 @@ ET Insurance|https://economictimes.indiatimes.com/industry/banking/finance/insur
 ET Stocks|https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms
 ET Economy|https://economictimes.indiatimes.com/news/economy/rssfeeds/1373380680.cms
 
-# Mint - Direct RSS
+# Mint - Direct RSS (15 feeds)
 Mint Markets|https://www.livemint.com/rss/markets
 Mint Money|https://www.livemint.com/rss/money
 Mint Banking|https://www.livemint.com/rss/industry/banking
 Mint Insurance|https://www.livemint.com/rss/insurance
 Mint Companies|https://www.livemint.com/rss/companies
 Mint Economy|https://www.livemint.com/rss/news/india
+Mint Technology|https://www.livemint.com/rss/technology
+Mint Industry|https://www.livemint.com/rss/industry
+Mint Opinion|https://www.livemint.com/rss/opinion
+Mint Politics|https://www.livemint.com/rss/politics
+Mint AI|https://www.livemint.com/rss/ai
+Mint Mutual Funds|https://www.livemint.com/rss/mutual-fund
+Mint Personal Finance|https://www.livemint.com/rss/personal-finance
+Mint Budget|https://www.livemint.com/rss/budget
+Mint Premium|https://www.livemint.com/rss/premium
 
-# Financial Times - Direct RSS
+# Financial Times - Direct RSS (12 feeds)
 FT Markets|https://www.ft.com/markets?format=rss
 FT Banking|https://www.ft.com/companies/financials?format=rss
 FT World Economy|https://www.ft.com/world/economy?format=rss
 FT Companies|https://www.ft.com/companies?format=rss
 FT India|https://www.ft.com/india?format=rss
 FT Asia Markets|https://www.ft.com/markets/asia-pacific?format=rss
+FT Technology|https://www.ft.com/technology?format=rss
+FT Equities|https://www.ft.com/equities?format=rss
+FT Currencies|https://www.ft.com/currencies?format=rss
+FT Commodities|https://www.ft.com/commodities?format=rss
+FT Opinion|https://www.ft.com/opinion?format=rss
+FT Lex Column|https://www.ft.com/lex?format=rss
 
-# Wall Street Journal - Direct RSS
+# Wall Street Journal - Direct RSS (5 feeds)
 WSJ Markets|https://feeds.content.dowjones.io/public/rss/RSSMarketsMain
 WSJ Finance|https://feeds.content.dowjones.io/public/rss/WSJcomUSBusiness
 WSJ Economy|https://feeds.content.dowjones.io/public/rss/RSSWorldNews
 WSJ India|https://feeds.content.dowjones.io/public/rss/WSJcomIndia
 WSJ Asia|https://feeds.content.dowjones.io/public/rss/WSJcomAsia
 
-# Google News - Backup for sources without direct RSS
-Google MoneyControl|https://news.google.com/rss/search?q=site:moneycontrol.com+(banking+OR+finance+OR+insurance+OR+markets)&hl=en-IN&gl=IN&ceid=IN:en
-Google Bloomberg India|https://news.google.com/rss/search?q=site:bloomberg.com+india+(banking+OR+finance+OR+markets)&hl=en&gl=US&ceid=US:en
-Google Reuters India|https://news.google.com/rss/search?q=site:reuters.com+india+(banking+OR+finance+OR+economy)&hl=en&gl=US&ceid=US:en
-Google Business Standard|https://news.google.com/rss/search?q=site:business-standard.com+(banking+OR+finance+OR+insurance)&hl=en-IN&gl=IN&ceid=IN:en
+# Reuters - Direct RSS (6 feeds)
+Reuters Business|https://www.reuters.com/rssfeed/businessNews
+Reuters Markets|https://www.reuters.com/rssfeed/marketsNews
+Reuters Finance|https://www.reuters.com/rssfeed/financialsNews
+Reuters Economy|https://www.reuters.com/rssfeed/economyNews
+Reuters US Business|https://www.reuters.com/rssfeed/businessNews/us
+Reuters Asia Business|https://www.reuters.com/rssfeed/businessNews/asia
