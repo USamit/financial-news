@@ -322,15 +322,24 @@ else:
         for recipient in RECIPIENTS:
             print('\n📤 Sending to: ' + str(recipient)[:3] + '...')
             
-            for i, msg in enumerate(messages):
-                print('  Part ' + str(i + 1) + '/' + str(len(messages)))
-                
-                data = {
-                    'chat_id': recipient,
-                    'text': msg,
-                    'parse_mode': 'Markdown',
-                    'disable_web_page_preview': True
-                }
+        for i, msg in enumerate(messages):
+            print('  Part ' + str(i + 1) + '/' + str(len(messages)))
+            
+            # DEBUG: Print message preview for Part 6
+            if i == 5:  # Part 6 (0-indexed)
+                print('  DEBUG - Part 6 content preview:')
+                print('  Length: ' + str(len(msg)) + ' chars')
+                print('  First 500 chars:')
+                print(msg[:500])
+                print('  Last 500 chars:')
+                print(msg[-500:])
+            
+            data = {
+                'chat_id': recipient,
+                'text': msg,
+                'parse_mode': 'Markdown',
+                'disable_web_page_preview': True
+            }
                 
                 try:
                     response = requests.post(url, json=data, timeout=15)
