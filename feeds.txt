@@ -1,0 +1,40 @@
+# Financial News RSS Feeds
+# Format: Source Name|Feed URL
+# Lines starting with # are comments
+
+# Economic Times - Direct RSS
+ET Markets|https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms
+ET Banking|https://economictimes.indiatimes.com/industry/banking/finance/banking/rssfeeds/13358256.cms
+ET Finance|https://economictimes.indiatimes.com/industry/banking/finance/rssfeeds/13358259.cms
+ET Insurance|https://economictimes.indiatimes.com/industry/banking/finance/insure/rssfeeds/13358276.cms
+ET Stocks|https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms
+ET Economy|https://economictimes.indiatimes.com/news/economy/rssfeeds/1373380680.cms
+
+# Mint - Direct RSS
+Mint Markets|https://www.livemint.com/rss/markets
+Mint Money|https://www.livemint.com/rss/money
+Mint Banking|https://www.livemint.com/rss/industry/banking
+Mint Insurance|https://www.livemint.com/rss/insurance
+Mint Companies|https://www.livemint.com/rss/companies
+Mint Economy|https://www.livemint.com/rss/news/india
+
+# Financial Times - Direct RSS
+FT Markets|https://www.ft.com/markets?format=rss
+FT Banking|https://www.ft.com/companies/financials?format=rss
+FT World Economy|https://www.ft.com/world/economy?format=rss
+FT Companies|https://www.ft.com/companies?format=rss
+FT India|https://www.ft.com/india?format=rss
+FT Asia Markets|https://www.ft.com/markets/asia-pacific?format=rss
+
+# Wall Street Journal - Direct RSS
+WSJ Markets|https://feeds.content.dowjones.io/public/rss/RSSMarketsMain
+WSJ Finance|https://feeds.content.dowjones.io/public/rss/WSJcomUSBusiness
+WSJ Economy|https://feeds.content.dowjones.io/public/rss/RSSWorldNews
+WSJ India|https://feeds.content.dowjones.io/public/rss/WSJcomIndia
+WSJ Asia|https://feeds.content.dowjones.io/public/rss/WSJcomAsia
+
+# Google News - Backup for sources without direct RSS
+Google MoneyControl|https://news.google.com/rss/search?q=site:moneycontrol.com+(banking+OR+finance+OR+insurance+OR+markets)&hl=en-IN&gl=IN&ceid=IN:en
+Google Bloomberg India|https://news.google.com/rss/search?q=site:bloomberg.com+india+(banking+OR+finance+OR+markets)&hl=en&gl=US&ceid=US:en
+Google Reuters India|https://news.google.com/rss/search?q=site:reuters.com+india+(banking+OR+finance+OR+economy)&hl=en&gl=US&ceid=US:en
+Google Business Standard|https://news.google.com/rss/search?q=site:business-standard.com+(banking+OR+finance+OR+insurance)&hl=en-IN&gl=IN&ceid=IN:en
