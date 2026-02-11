@@ -48,10 +48,16 @@ WSJ Economy|https://feeds.content.dowjones.io/public/rss/RSSWorldNews
 WSJ India|https://feeds.content.dowjones.io/public/rss/WSJcomIndia
 WSJ Asia|https://feeds.content.dowjones.io/public/rss/WSJcomAsia
 
-# Reuters - Direct RSS (6 feeds)
-Reuters Business|https://www.reuters.com/rssfeed/businessNews
-Reuters Markets|https://www.reuters.com/rssfeed/marketsNews
-Reuters Finance|https://www.reuters.com/rssfeed/financialsNews
-Reuters Economy|https://www.reuters.com/rssfeed/economyNews
-Reuters US Business|https://www.reuters.com/rssfeed/businessNews/us
-Reuters Asia Business|https://www.reuters.com/rssfeed/businessNews/asia
+# Business Standard - Indian Financial News (6 feeds)
+BS Banking|https://www.business-standard.com/rss/finance-bs-banking-finance-101.rss
+BS Markets|https://www.business-standard.com/rss/markets-106.rss
+BS Economy|https://www.business-standard.com/rss/economy-policy-102.rss
+BS Companies|https://www.business-standard.com/rss/companies-101.rss
+BS Insurance|https://www.business-standard.com/rss/finance-bs-insurance-103.rss
+BS Finance|https://www.business-standard.com/rss/finance-news-101.rss
+
+# MoneyControl - Indian Markets (4 feeds)
+MC Markets|https://www.moneycontrol.com/rss/marketreports.xml
+MC News|https://www.moneycontrol.com/rss/latestnews.xml
+MC MF|https://www.moneycontrol.com/rss/mutualfunds.xml
+MC Business|https://www.moneycontrol.com/rss/business.xml
