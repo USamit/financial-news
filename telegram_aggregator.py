@@ -132,7 +132,6 @@ def load_topics():
         print('⚠ topics.txt not found - using minimal defaults')
         return [
             {'name': 'BANKING & FINANCE', 'keywords': ['bank', 'banking', 'loan', 'credit']},
-            {'name': 'MARKETS', 'keywords': ['market', 'stock', 'equity', 'share']},
             {'name': 'INSURANCE', 'keywords': ['insurance', 'insurer', 'premium', 'claim']},
             {'name': 'OTHER NEWS', 'keywords': ['other', 'news']}
         ]
@@ -140,14 +139,22 @@ def load_topics():
         print('⚠ Error loading topics: ' + str(e))
         return [
             {'name': 'BANKING & FINANCE', 'keywords': ['bank', 'banking', 'loan', 'credit']},
-            {'name': 'MARKETS', 'keywords': ['market', 'stock', 'equity', 'share']},
             {'name': 'OTHER NEWS', 'keywords': ['other', 'news']}
         ]
 
 # ============================================
-# CATEGORIZE ARTICLE BY TOPIC (WITH DEBUG)
+# EXTRACT PUBLICATION FROM FEED NAME
 # ============================================
-def categorize_article(title, description, topics, debug=False):
+def get_publication(feed_name):
+    """Extract publication name from feed name (e.g. 'ET Markets' -> 'ET')"""
+    if ' ' in feed_name:
+        return feed_name.split(' ')[0]
+    return feed_name
+
+# ============================================
+# CATEGORIZE ARTICLE BY TOPIC
+# ============================================
+def categorize_article(title, description, topics):
     """
     Categorize article using scoring:
     - Each keyword match: 1 point
@@ -159,30 +166,18 @@ def categorize_article(title, description, topics, debug=False):
     
     for topic in topics:
         score = 0
-        matched_keywords = []
         
         # Check keyword matches
         for keyword in topic['keywords']:
             if keyword in text:
                 score += 1
-                matched_keywords.append(keyword)
         
         if score > 0:
-            topic_scores[topic['name']] = {
-                'score': score,
-                'keywords': matched_keywords
-            }
-    
-    # Debug logging for suspicious articles
-    if debug or 'trump' in text or 'tariff' in text:
-        print('\n  [DEBUG] Article: ' + title[:60])
-        print('  [DEBUG] Scores:')
-        for topic_name, data in sorted(topic_scores.items(), key=lambda x: x[1]['score'], reverse=True):
-            print(f"    {topic_name}: {data['score']} ({', '.join(data['keywords'][:3])})")
+            topic_scores[topic['name']] = score
     
     # Return topic with highest score
     if topic_scores:
-        best_topic = max(topic_scores, key=lambda x: topic_scores[x]['score'])
+        best_topic = max(topic_scores, key=topic_scores.get)
         return best_topic
     
     # Default category if no match
@@ -271,11 +266,15 @@ for source, url in feeds.items():
                     seen_urls.add(link)
                     time_str = pub_date.strftime('%H:%M') if pub_date else 'Recent'
                     
-                    # Categorize article by topic with debug
-                    topic = categorize_article(title, description, topics, debug=True)
+                    # Extract publication name
+                    publication = get_publication(source)
+                    
+                    # Categorize article by topic
+                    topic = categorize_article(title, description, topics)
                     
                     articles.append({
                         'source': source,
+                        'publication': publication,
                         'title': title,
                         'url': link,
                         'time': time_str,
@@ -285,9 +284,7 @@ for source, url in feeds.items():
                     
                     source_count += 1
                     
-                    # Max 20 articles per feed
-                    if source_count >= 20:
-                        break
+                    # NO LIMIT - get all articles from feed
                         
             except Exception as e:
                 continue
@@ -316,12 +313,11 @@ print('=' * 60)
 # Dynamically detect all publications
 all_publications = set()
 for source in feed_stats.keys():
-    if ' ' in source:
-        pub = source.split(' ')[0]
-        all_publications.add(pub)
+    pub = get_publication(source)
+    all_publications.add(pub)
 
 for pub in sorted(all_publications):
-    pub_feeds = {k: v for k, v in feed_stats.items() if k.startswith(pub + ' ')}
+    pub_feeds = {k: v for k, v in feed_stats.items() if get_publication(k) == pub}
     if pub_feeds:
         total_rel = sum(f['relevant'] for f in pub_feeds.values())
         print(pub + ': ' + str(total_rel) + ' articles from ' + str(len(pub_feeds)) + ' feeds')
@@ -352,15 +348,20 @@ else:
     # Sort articles by date (most recent first)
     articles.sort(key=lambda x: x['date'], reverse=True)
     
-    # Group articles by topic
-    by_topic = defaultdict(list)
+    # Group articles by topic, then by publication
+    by_topic = defaultdict(lambda: defaultdict(list))
     for article in articles:
-        by_topic[article['topic']].append(article)
+        by_topic[article['topic']][article['publication']].append(article)
     
     messages = []
     current_msg = '*Financial News Digest*\n'
     current_msg = current_msg + datetime.now().strftime('%B %d, %Y') + '\n\n'
-    current_msg = current_msg + str(len(articles)) + ' articles across ' + str(len(by_topic)) + ' topics\n'
+    
+    # Count total articles and publications
+    total_articles = len(articles)
+    all_pubs = set(article['publication'] for article in articles)
+    
+    current_msg = current_msg + str(total_articles) + ' articles from ' + str(len(all_pubs)) + ' publications across ' + str(len(by_topic)) + ' topics\n'
     current_msg = current_msg + '━━━━━━━━━━━━━━━━━\n\n'
     
     def add_section(msg, section_text):
@@ -375,28 +376,38 @@ else:
         if topic_name not in by_topic:
             continue
         
-        # Max 25 articles per topic
-        topic_articles = by_topic[topic_name][:25]
+        publications_in_topic = by_topic[topic_name]
         
-        if not topic_articles:
+        if not publications_in_topic:
             continue
         
-        # Sort by source within topic
-        topic_articles_sorted = sorted(topic_articles, key=lambda x: x['source'])
+        # Start topic section
+        section = '*' + topic_name + '*\n\n'
         
-        section = '*' + topic_name + '*\n'
-        section = section + str(len(topic_articles)) + ' articles\n\n'
-        
-        for i, article in enumerate(topic_articles_sorted, 1):
-            title_short = article['title']
-            if len(title_short) > 80:
-                title_short = title_short[:77] + '...'
+        # Sort publications alphabetically within topic
+        for pub_name in sorted(publications_in_topic.keys()):
+            articles_from_pub = publications_in_topic[pub_name]
             
-            # Simple format: just number and link
-            section = section + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
+            if not articles_from_pub:
+                continue
+            
+            # Sort by date within publication (most recent first)
+            articles_from_pub = sorted(articles_from_pub, key=lambda x: x['date'], reverse=True)
+            
+            # Add publication heading
+            section = section + '_' + pub_name + '_\n'
+            
+            # Add all articles from this publication in this topic
+            for i, article in enumerate(articles_from_pub, 1):
+                title_short = article['title']
+                if len(title_short) > 80:
+                    title_short = title_short[:77] + '...'
+                
+                section = section + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
+            
+            section = section + '\n'
         
-        section = section + '\n'
-        
+        # Try to add this topic section to current message
         current_msg, overflow = add_section(current_msg, section)
         if overflow:
             messages.append(current_msg)
