@@ -7,9 +7,7 @@ BANKING & FINANCE|bank,banks,banking,lender,lenders,lending,loan,loans,mortgage,
 
 CENTRAL BANKS & RATES|rbi,fed,ecb,boj,central bank,monetary policy,interest rate,rate cut,rate hike,repo,reverse repo,policy rate,inflation,cpi,liquidity,tightening,easing
 
-MARKETS & TRADING|nifty,sensex,market,markets,stock,stocks,equity,equities,share,shares,index,indices,trading,investor,volatility,rally,sell-off,bull,bear,correction,crash
-
-INSURANCE|insurance,insurer,insurers,reinsurance,underwriting,premium,premiums,policyholder,claim,claims,life insurance,lic,health insurance,general insurance,motor insurance,claims ratio,solvency
+INSURANCE|insurance,insurer,insurers,reinsurance,underwriting,premium,premiums,policyholder,insurance claim,insurance claims,life insurance,health insurance,general insurance,motor insurance,claims ratio,solvency
 
 ECONOMY & POLICY|economy,economic,gdp,growth,recession,fiscal,budget,deficit,government,policy,regulation,tax,taxation,treasury,sovereign,trade,tariff,tariffs,export,import,trade deal,bilateral,sanctions,trump,biden,modi,congress,trade agreement,trade war,protectionism,free trade,customs,duties,commerce
 
