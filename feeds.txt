@@ -61,3 +61,14 @@ MC Markets|https://www.moneycontrol.com/rss/marketreports.xml
 MC News|https://www.moneycontrol.com/rss/latestnews.xml
 MC MF|https://www.moneycontrol.com/rss/mutualfunds.xml
 MC Business|https://www.moneycontrol.com/rss/business.xml
+
+# New York Times - Financial & Business (8 feeds)
+NYT Business|https://rss.nytimes.com/services/xml/rss/nyt/Business.xml
+NYT Economy|https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml
+NYT DealBook|https://rss.nytimes.com/services/xml/rss/nyt/DealBook.xml
+NYT Your Money|https://rss.nytimes.com/services/xml/rss/nyt/YourMoney.xml
+NYT Technology|https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml
+NYT Markets|https://rss.nytimes.com/services/xml/rss/nyt/Markets.xml
+NYT Small Business|https://rss.nytimes.com/services/xml/rss/nyt/SmallBusiness.xml
+NYT Global Business|https://rss.nytimes.com/services/xml/rss/nyt/InternationalBusiness.xml
+
