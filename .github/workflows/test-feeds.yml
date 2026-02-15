@@ -1,0 +1,29 @@
+name: Test RSS Feeds
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-feeds:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Install dependencies
+        run: |
+          pip install feedparser --break-system-packages
+      
+      - name: Test all RSS feeds
+        run: python test_feeds.py
+      
+      - name: Upload cleaned feeds
+        uses: actions/upload-artifact@v3
+        with:
+          name: cleaned-feeds
+          path: feeds_cleaned.txt
