@@ -1,29 +1,28 @@
 # Financial News Topics Configuration
 # Format: Topic Name|keyword1,keyword2,keyword3
-# IMPORTANT: Phrases (multiple words) are weighted higher than single words
-# Use underscores for phrases: health_insurance (matches "health insurance")
-# Topics appear in order of specificity - most specific first
+# Topics appear in the order listed here
+# Lines starting with # are comments
 
-CENTRAL BANKS & RATES|rbi,federal reserve,fed rate,ecb,boj,central bank,monetary policy,interest rate decision,rate cut,rate hike,repo rate,reverse repo,policy rate,inflation target,cpi inflation,core inflation,liquidity injection,monetary tightening,monetary easing,rate pause
+BANKING & FINANCE|bank,banks,banking,lender,lenders,lending,loan,loans,mortgage,deposit,deposits,credit,nbfc,hfc,psu bank,public sector bank,npa,npas,bad loan,provision,capital adequacy,basel
 
-INSURANCE|life_insurance,health_insurance,motor_insurance,general_insurance,term_insurance,endowment,ulip,mediclaim,reinsurance,underwriting,insurance_premium,premium_payment,policy_holder,claim_settlement,claims_ratio,loss_ratio,solvency_ratio,solvency_margin,insurance_regulator,irdai,insurer,insurance_company,insurance_sector,insurance_industry
+CENTRAL BANKS & RATES|rbi,fed,ecb,boj,central bank,monetary policy,interest rate,rate cut,rate hike,repo,reverse repo,policy rate,inflation,cpi,liquidity,tightening,easing
 
-DEALS & IPOS|initial_public_offering,ipo launch,ipo subscription,stock_listing,buyback,share_buyback,merger_and_acquisition,m&a deal,takeover bid,acquisition deal,stake sale,divestment,fundraising,private_equity,venture_capital,pre-ipo,valuation,unicorn
+MARKETS & TRADING|nifty,sensex,market,markets,stock,stocks,equity,equities,share,shares,index,indices,trading,investor,volatility,rally,sell-off,bull,bear,correction,crash
 
-MUTUAL FUNDS & INVESTMENTS|mutual_fund,mutual fund,mf,asset_under_management,aum,fund_manager,fund_house,asset_management,etf,index_fund,sip,systematic_investment,nav,fund_performance,equity_fund,debt_fund,hybrid_fund,portfolio,fund_allocation
+INSURANCE|insurance,insurer,insurers,reinsurance,underwriting,premium,premiums,policyholder,claim,claims,life insurance,lic,health insurance,general insurance,motor insurance,claims ratio,solvency
 
-BANKING & FINANCE|public_sector_bank,private_sector_bank,psu bank,cooperative_bank,bank merger,bank results,bank earnings,banking sector,banking industry,lender,lending rate,loan growth,home loan,personal loan,auto loan,loan disbursement,mortgage,deposit rate,deposit growth,savings account,current account,credit growth,bad loan,non-performing asset,npa ratio,gross npa,net npa,provision coverage,capital adequacy,basel norms,tier 1 capital,nbfc,housing finance,micro finance
+ECONOMY & POLICY|economy,economic,gdp,growth,recession,fiscal,budget,deficit,government,policy,regulation,tax,taxation,treasury,sovereign
 
-BONDS & DEBT MARKETS|government_bond,corporate_bond,bond yield,bond auction,g-sec,gilt,sovereign_bond,treasury_bill,t-bill,commercial_paper,certificate_of_deposit,debt_market,yield_curve,bond_spread,credit_spread,bond_issuance,debt_issuance
+REGULATION & COMPLIANCE|sebi,irdai,irda,regulatory,regulation,compliance,regulator,guidelines,norms,circular,notification
 
-MARKETS & TRADING|stock_market,share_market,equity_market,nifty,sensex,market rally,market crash,market correction,bull market,bear market,stock price,share price,equity valuation,market capitalization,trading volume,stock exchange,bse,nse,foreign_institutional_investor,fii,domestic_institutional_investor,dii,retail investor,market volatility,circuit breaker
+COMPANIES & EARNINGS|earnings,profit,profits,loss,quarterly results,q1,q2,q3,q4,revenue,margin,margins,balance sheet,cash flow,dividend
 
-COMPANIES & EARNINGS|quarterly_results,q1 results,q2 results,q3 results,q4 results,annual_results,company_earnings,profit_growth,revenue_growth,net_profit,operating_profit,ebitda,profit_margin,revenue,top_line,bottom_line,earnings_per_share,eps,dividend,dividend_yield,balance_sheet,cash_flow,debt_equity
+DEALS & IPOS|ipo,listing,buyback,merger,acquisition,m&a,takeover,stake sale,divestment,fundraising,private equity,venture capital,valuation
 
-REGULATION & COMPLIANCE|sebi circular,sebi guidelines,rbi circular,rbi guidelines,irdai guidelines,regulatory framework,compliance norms,regulatory action,enforcement action,investigation,penalty,fine,regulatory approval,regulatory change,new regulation,regulatory filing
+MUTUAL FUNDS & INVESTMENTS|mutual fund,mf,aum,fund,funds,asset management,etf,sip,nav,fund manager,portfolio
 
-TECHNOLOGY & FINTECH|financial_technology,fintech,digital_banking,digital_payment,upi transaction,payment_gateway,mobile_banking,internet_banking,neo bank,payment_bank,wallet,digital_wallet,cryptocurrency,blockchain,bitcoin,ethereum,crypto exchange,defi,buy_now_pay_later,bnpl,lending_app
+BONDS & DEBT MARKETS|bond,bonds,bond yield,debt,yield,yields,yield curve,spread,spreads,g-sec,gilts,treasury bill,t-bill,commercial paper
 
-ECONOMY & POLICY|india_gdp,gdp growth,economic_growth,economic_slowdown,recession,trade_deficit,current_account,fiscal_deficit,budget_deficit,government_budget,union_budget,economic_survey,trade_agreement,bilateral_trade,tariff,trade_war,sanctions,export,import,foreign_trade,economic_policy,fiscal_policy,tax_policy,gst,income_tax,corporate_tax
+TECHNOLOGY & FINTECH|fintech,digital,upi,payment,payments,wallet,neobank,blockchain,crypto,ai,artificial intelligence,machine learning,technology,tech,innovation
 
-OTHER NEWS|other,general,miscellaneous
+OTHER NEWS|other,news,general
