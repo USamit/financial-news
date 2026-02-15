@@ -1,0 +1,29 @@
+name: Discover RSS Feeds
+
+on:
+  workflow_dispatch:
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Install dependencies
+        run: |
+          pip install feedparser --break-system-packages
+      
+      - name: Discover available RSS feeds
+        run: python discover_feeds.py
+      
+      - name: Upload discovered feeds
+        uses: actions/upload-artifact@v4
+        with:
+          name: discovered-feeds
+          path: feeds_discovered.txt
