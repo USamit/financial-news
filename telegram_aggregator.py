@@ -120,9 +120,15 @@ def load_topics():
                         topic_name = parts[0].strip()
                         keywords_str = parts[1].strip()
                         keywords = [kw.strip().lower() for kw in keywords_str.split(',')]
+                        
+                        # Separate phrases (with underscores) from single words
+                        phrases = [kw.replace('_', ' ') for kw in keywords if '_' in kw]
+                        single_words = [kw for kw in keywords if '_' not in kw]
+                        
                         topics.append({
                             'name': topic_name,
-                            'keywords': keywords
+                            'phrases': phrases,
+                            'keywords': single_words
                         })
         
         print('✓ Loaded ' + str(len(topics)) + ' topic categories')
@@ -130,31 +136,53 @@ def load_topics():
     except FileNotFoundError:
         print('⚠ topics.txt not found - using minimal defaults')
         return [
-            {'name': 'BANKING & FINANCE', 'keywords': ['bank', 'banking', 'loan', 'credit']},
-            {'name': 'MARKETS', 'keywords': ['market', 'stock', 'equity', 'share']},
-            {'name': 'INSURANCE', 'keywords': ['insurance', 'insurer', 'premium', 'claim']},
-            {'name': 'OTHER NEWS', 'keywords': ['other', 'news']}
+            {'name': 'BANKING & FINANCE', 'phrases': [], 'keywords': ['bank', 'banking', 'loan', 'credit']},
+            {'name': 'MARKETS', 'phrases': [], 'keywords': ['market', 'stock', 'equity', 'share']},
+            {'name': 'INSURANCE', 'phrases': [], 'keywords': ['insurance', 'insurer', 'premium', 'claim']},
+            {'name': 'OTHER NEWS', 'phrases': [], 'keywords': ['other', 'news']}
         ]
     except Exception as e:
         print('⚠ Error loading topics: ' + str(e))
         return [
-            {'name': 'BANKING & FINANCE', 'keywords': ['bank', 'banking', 'loan', 'credit']},
-            {'name': 'MARKETS', 'keywords': ['market', 'stock', 'equity', 'share']},
-            {'name': 'OTHER NEWS', 'keywords': ['other', 'news']}
+            {'name': 'BANKING & FINANCE', 'phrases': [], 'keywords': ['bank', 'banking', 'loan', 'credit']},
+            {'name': 'MARKETS', 'phrases': [], 'keywords': ['market', 'stock', 'equity', 'share']},
+            {'name': 'OTHER NEWS', 'phrases': [], 'keywords': ['other', 'news']}
         ]
 
 # ============================================
-# CATEGORIZE ARTICLE BY TOPIC
+# CATEGORIZE ARTICLE BY TOPIC (IMPROVED)
 # ============================================
 def categorize_article(title, description, topics):
-    """Categorize article into topic based on keywords"""
+    """
+    Categorize article using weighted scoring:
+    - Phrase matches: 3 points each
+    - Single word matches: 1 point each
+    - Returns topic with highest score
+    """
     text = (title + ' ' + str(description)).lower()
     
-    # Check each topic's keywords (order matters - first match wins)
+    topic_scores = {}
+    
     for topic in topics:
+        score = 0
+        
+        # Check phrase matches (weighted 3x)
+        for phrase in topic['phrases']:
+            if phrase in text:
+                score += 3
+        
+        # Check single word matches (weighted 1x)
         for keyword in topic['keywords']:
             if keyword in text:
-                return topic['name']
+                score += 1
+        
+        if score > 0:
+            topic_scores[topic['name']] = score
+    
+    # Return topic with highest score
+    if topic_scores:
+        best_topic = max(topic_scores, key=topic_scores.get)
+        return best_topic
     
     # Default category if no match
     return 'OTHER NEWS'
@@ -206,7 +234,7 @@ for source, url in feeds.items():
         recent_count = 0
         source_count = 0
         
-        # INCREASED: Check up to 100 entries per feed (was 40)
+        # Check up to 100 entries per feed
         for entry in feed.entries[:100]:
             try:
                 pub_date = None
@@ -242,7 +270,7 @@ for source, url in feeds.items():
                     seen_urls.add(link)
                     time_str = pub_date.strftime('%H:%M') if pub_date else 'Recent'
                     
-                    # Categorize article by topic
+                    # Categorize article by topic using improved scoring
                     topic = categorize_article(title, description, topics)
                     
                     articles.append({
@@ -256,7 +284,7 @@ for source, url in feeds.items():
                     
                     source_count += 1
                     
-                    # INCREASED: Max 20 articles per feed (was 10)
+                    # Max 20 articles per feed
                     if source_count >= 20:
                         break
                         
@@ -284,149 +312,4 @@ print('\n' + '=' * 60)
 print('SUMMARY BY PUBLICATION')
 print('=' * 60)
 
-# Dynamically detect all publications
-all_publications = set()
-for source in feed_stats.keys():
-    if ' ' in source:
-        pub = source.split(' ')[0]
-        all_publications.add(pub)
-
-for pub in sorted(all_publications):
-    pub_feeds = {k: v for k, v in feed_stats.items() if k.startswith(pub + ' ')}
-    if pub_feeds:
-        total_rel = sum(f['relevant'] for f in pub_feeds.values())
-        print(pub + ': ' + str(total_rel) + ' articles from ' + str(len(pub_feeds)) + ' feeds')
-
-print('\nTotal unique articles: ' + str(len(articles)))
-
-# Print topic distribution
-print('\n' + '=' * 60)
-print('SUMMARY BY TOPIC')
-print('=' * 60)
-
-topic_counts = defaultdict(int)
-for article in articles:
-    topic_counts[article['topic']] += 1
-
-for topic in sorted(topic_counts.keys()):
-    print(topic + ': ' + str(topic_counts[topic]) + ' articles')
-
-print('=' * 60)
-
-# ============================================
-# BUILD TELEGRAM MESSAGE
-# ============================================
-if not articles:
-    msg = '*Financial News Digest*\n' + datetime.now().strftime('%B %d, %Y') + '\n\nNo relevant articles found today.'
-    messages = [msg]
-else:
-    # Sort articles by date (most recent first)
-    articles.sort(key=lambda x: x['date'], reverse=True)
-    
-    # Group articles by topic
-    by_topic = defaultdict(list)
-    for article in articles:
-        by_topic[article['topic']].append(article)
-    
-    messages = []
-    current_msg = '*Financial News Digest*\n'
-    current_msg = current_msg + datetime.now().strftime('%B %d, %Y') + '\n\n'
-    current_msg = current_msg + str(len(articles)) + ' articles across ' + str(len(by_topic)) + ' topics\n'
-    current_msg = current_msg + '━━━━━━━━━━━━━━━━━\n\n'
-    
-    def add_section(msg, section_text):
-        if len(msg) + len(section_text) > 3800:
-            return msg, section_text
-        return msg + section_text, ''
-    
-    # Build sections by topic (in order defined in topics.txt)
-    for topic_config in topics:
-        topic_name = topic_config['name']
-        
-        if topic_name not in by_topic:
-            continue
-        
-        # INCREASED: Max 25 articles per topic (was 15)
-        topic_articles = by_topic[topic_name][:25]
-        
-        if not topic_articles:
-            continue
-        
-        section = '*' + topic_name + '*\n'
-        section = section + str(len(topic_articles)) + ' articles\n\n'
-        
-        for i, article in enumerate(topic_articles, 1):
-            title_short = article['title']
-            if len(title_short) > 70:
-                title_short = title_short[:67] + '...'
-            
-            # Show source in parentheses
-            source_short = article['source']
-            if len(source_short) > 20:
-                source_short = source_short[:17] + '...'
-            
-            section = section + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
-            section = section + '   _' + source_short + ' • ' + article['time'] + '_\n'
-        
-        section = section + '\n'
-        
-        current_msg, overflow = add_section(current_msg, section)
-        if overflow:
-            messages.append(current_msg)
-            current_msg = overflow
-    
-    if current_msg.strip():
-        messages.append(current_msg)
-
-# ============================================
-# SEND TO ALL RECIPIENTS
-# ============================================
-if not token:
-    print('\n❌ ERROR: Missing TELEGRAM_BOT_TOKEN')
-elif not RECIPIENTS:
-    print('\n❌ ERROR: No recipients found')
-else:
-    try:
-        url = 'https://api.telegram.org/bot' + token + '/sendMessage'
-        
-        print('\n' + '=' * 60)
-        print('SENDING TO ' + str(len(RECIPIENTS)) + ' RECIPIENTS')
-        print('=' * 60)
-        
-        for recipient in RECIPIENTS:
-            print('\n📤 Sending to: ' + str(recipient)[:3] + '...')
-            
-            for i, msg in enumerate(messages):
-                print('  Part ' + str(i + 1) + '/' + str(len(messages)))
-                
-                data = {
-                    'chat_id': recipient,
-                    'text': msg,
-                    'parse_mode': 'Markdown',
-                    'disable_web_page_preview': True
-                }
-                
-                try:
-                    response = requests.post(url, json=data, timeout=15)
-                    
-                    if response.status_code == 200:
-                        print('  ✅ Sent')
-                    else:
-                        print('  ❌ Error: ' + str(response.status_code))
-                except requests.Timeout:
-                    print('  ⚠️  Timeout')
-                except Exception as e:
-                    print('  ❌ Error: ' + str(e)[:50])
-                
-                if i < len(messages) - 1:
-                    import time
-                    time.sleep(1)
-        
-        print('\n✅ ALL MESSAGES SENT!')
-            
-    except Exception as e:
-        print('\n❌ ERROR: ' + str(e))
-
-print('\n' + '=' * 60)
-print('Script completed')
-print('=' * 60)
+# Dynamically detect all​​​​​​​​​​​​​​​​
