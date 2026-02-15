@@ -19,8 +19,4 @@ DEALS & IPOS|ipo,listing,buyback,merger,acquisition,m&a,takeover,stake sale,dive
 
 MUTUAL FUNDS & INVESTMENTS|mutual fund,mf,aum,fund,funds,asset management,etf,sip,nav,fund manager,portfolio
 
-BONDS & DEBT MARKETS|bond,bonds,bond yield,debt,yield,yields,yield curve,spread,spreads,g-sec,gilts,treasury bill,t-bill,commercial paper
-
-TECHNOLOGY & FINTECH|fintech,digital,upi,payment,payments,wallet,neobank,blockchain,crypto,ai,artificial intelligence,machine learning,technology,tech,innovation
-
 OTHER NEWS|other,news,general
