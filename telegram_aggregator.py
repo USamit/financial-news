@@ -16,6 +16,12 @@ print('Starting Financial News Aggregator...')
 print('=' * 60)
 
 # ============================================
+# CONFIGURATION
+# ============================================
+MIN_ARTICLES_FOR_TRENDING = 50  # Don't run trending on small batches
+MAX_TRENDING_TOPICS = 5  # Show top 5 trending topics
+
+# ============================================
 # LOAD RECIPIENTS from recipients.txt
 # ============================================
 def load_recipients():
@@ -83,14 +89,12 @@ def load_feeds():
                 if '|' in line:
                     parts = line.split('|')
                     
-                    # Support both old format (Name|URL) and new format (Name|Acronym|URL)
                     if len(parts) == 3:
                         feed_name = parts[0].strip()
                         acronym = parts[1].strip()
                         url = parts[2].strip()
                         feeds[feed_name] = {'url': url, 'acronym': acronym}
                     elif len(parts) == 2:
-                        # Old format - fallback to extracting acronym from name
                         feed_name = parts[0].strip()
                         url = parts[1].strip()
                         acronym = feed_name.split(' ')[0] if ' ' in feed_name else feed_name
@@ -101,8 +105,7 @@ def load_feeds():
     except FileNotFoundError:
         print('⚠ feeds.txt not found - using minimal defaults')
         return {
-            'ET Markets': {'url': 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms', 'acronym': 'ET'},
-            'Mint Markets': {'url': 'https://www.livemint.com/rss/markets', 'acronym': 'Mint'}
+            'ET Markets': {'url': 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms', 'acronym': 'ET'}
         }
     except Exception as e:
         print('⚠ Error loading feeds: ' + str(e))
@@ -122,7 +125,6 @@ def load_topics():
                 if not line or line.startswith('#'):
                     continue
                 
-                # Expected format: Topic Name|keyword1,keyword2,keyword3
                 if '|' in line:
                     parts = line.split('|', 1)
                     if len(parts) == 2:
@@ -141,33 +143,23 @@ def load_topics():
         print('⚠ topics.txt not found - using minimal defaults')
         return [
             {'name': 'BANKING & FINANCE', 'keywords': ['bank', 'banking', 'loan', 'credit']},
-            {'name': 'INSURANCE', 'keywords': ['insurance', 'insurer', 'premium', 'claim']},
             {'name': 'OTHER NEWS', 'keywords': ['other', 'news']}
         ]
     except Exception as e:
         print('⚠ Error loading topics: ' + str(e))
-        return [
-            {'name': 'BANKING & FINANCE', 'keywords': ['bank', 'banking', 'loan', 'credit']},
-            {'name': 'OTHER NEWS', 'keywords': ['other', 'news']}
-        ]
+        return [{'name': 'OTHER NEWS', 'keywords': ['other', 'news']}]
 
 # ============================================
 # CATEGORIZE ARTICLE BY TOPIC
 # ============================================
 def categorize_article(title, description, topics):
-    """
-    Categorize article using scoring:
-    - Each keyword match: 1 point
-    - Returns topic with highest score
-    """
+    """Categorize article using scoring"""
     text = (title + ' ' + str(description)).lower()
     
     topic_scores = {}
     
     for topic in topics:
         score = 0
-        
-        # Check keyword matches
         for keyword in topic['keywords']:
             if keyword in text:
                 score += 1
@@ -175,13 +167,141 @@ def categorize_article(title, description, topics):
         if score > 0:
             topic_scores[topic['name']] = score
     
-    # Return topic with highest score
     if topic_scores:
         best_topic = max(topic_scores, key=topic_scores.get)
         return best_topic
     
-    # Default category if no match
     return 'OTHER NEWS'
+
+# ============================================
+# FREE TRENDING DETECTION (MINIMAL PATTERNS)
+# ============================================
+def identify_trending_topics_free(articles, top_n=5):
+    """
+    Identify trending topics by clustering articles into news themes
+    Uses minimal patterns for current events (not duplicating keywords.txt)
+    """
+    
+    if len(articles) < 10:
+        return []
+    
+    # Get current quarter dynamically
+    current_month = datetime.now().month
+    if 1 <= current_month <= 3:
+        quarter = 'Q4'
+        quarter_patterns = ['q4', 'fourth quarter', 'results', 'earnings']
+    elif 4 <= current_month <= 6:
+        quarter = 'Q1'
+        quarter_patterns = ['q1', 'first quarter', 'results', 'earnings']
+    elif 7 <= current_month <= 9:
+        quarter = 'Q2'
+        quarter_patterns = ['q2', 'second quarter', 'results', 'earnings']
+    else:
+        quarter = 'Q3'
+        quarter_patterns = ['q3', 'third quarter', 'results', 'earnings']
+    
+    # Minimal news theme patterns (these are EVENT THEMES, not keywords)
+    trending_themes = {
+        'Trade & Tariffs': [
+            'tariff', 'bilateral trade', 'trade deal', 'trade war', 
+            'export', 'import', 'trade agreement'
+        ],
+        f'{quarter} Earnings': quarter_patterns + [
+            'profit', 'revenue', 'quarterly', 'beat estimates', 'miss estimates'
+        ],
+        'Rate Decisions': [
+            'rate cut', 'rate hike', 'repo rate', 'policy rate', 
+            'monetary policy', 'interest rate decision'
+        ],
+        'IPO & Listings': [
+            'ipo', 'listing', 'issue price', 'subscription', 
+            'grey market premium', 'allotment'
+        ],
+        'Mergers & Deals': [
+            'merger', 'acquisition', 'm&a', 'stake sale', 
+            'buyout', 'takeover'
+        ],
+        'Regulatory Actions': [
+            'sebi action', 'irdai guideline', 'rbi circular', 
+            'penalty', 'enforcement', 'investigation'
+        ],
+    }
+    
+    # Cluster articles by theme
+    theme_clusters = defaultdict(list)
+    
+    for article in articles:
+        text = article['title'].lower()
+        
+        # Find best matching theme
+        best_theme = None
+        max_matches = 0
+        
+        for theme_name, patterns in trending_themes.items():
+            matches = sum(1 for pattern in patterns if pattern in text)
+            if matches > max_matches:
+                max_matches = matches
+                best_theme = theme_name
+        
+        if best_theme and max_matches > 0:
+            theme_clusters[best_theme].append(article)
+    
+    # Build trending list
+    trending = []
+    for theme_name, cluster_articles in theme_clusters.items():
+        if len(cluster_articles) >= 5:  # Minimum 5 articles to be "trending"
+            summary = generate_free_summary(theme_name, cluster_articles[:5])
+            
+            trending.append({
+                'topic': theme_name,
+                'count': len(cluster_articles),
+                'articles': cluster_articles,
+                'summary': summary
+            })
+    
+    # Sort by article count (most covered first)
+    trending.sort(key=lambda x: x['count'], reverse=True)
+    
+    return trending[:top_n]
+
+# ============================================
+# GENERATE FREE SUMMARY
+# ============================================
+def generate_free_summary(topic_name, articles):
+    """
+    Generate summary from article titles (no API needed)
+    """
+    
+    if not articles:
+        return 'Multiple developments reported.'
+    
+    # Extract key information from titles
+    summary_parts = []
+    
+    for article in articles[:3]:  # Use top 3 articles
+        title = article['title']
+        
+        # Clean and shorten title for summary
+        cleaned = title
+        for prefix in ['Exclusive:', 'Breaking:', 'Opinion:', 'Analysis:', 'Update:']:
+            cleaned = cleaned.replace(prefix, '').strip()
+        
+        # Shorten if needed
+        if len(cleaned) > 70:
+            # Try to cut at sentence boundary
+            if '.' in cleaned[:70]:
+                cleaned = cleaned[:cleaned[:70].rindex('.')] + '.'
+            elif ',' in cleaned[:70]:
+                cleaned = cleaned[:cleaned[:70].rindex(',')] + '...'
+            else:
+                cleaned = cleaned[:67] + '...'
+        
+        summary_parts.append(cleaned)
+    
+    # Join with bullet points
+    summary = ' • '.join(summary_parts)
+    
+    return summary
 
 # Load configuration
 RECIPIENTS = load_recipients()
@@ -233,7 +353,6 @@ for feed_name, feed_info in feeds.items():
         recent_count = 0
         source_count = 0
         
-        # Check up to 100 entries per feed
         for entry in feed.entries[:100]:
             try:
                 pub_date = None
@@ -243,7 +362,6 @@ for feed_name, feed_info in feeds.items():
                     except:
                         pass
                 
-                # Filter: Last 24 hours only
                 if pub_date and (datetime.now() - pub_date) <= timedelta(days=1):
                     recent_count += 1
                 elif not pub_date:
@@ -261,7 +379,6 @@ for feed_name, feed_info in feeds.items():
                 if link in seen_urls:
                     continue
                 
-                # Keyword matching
                 text = (title + ' ' + str(description)).lower()
                 is_relevant = any(kw in text for kw in keywords)
                 
@@ -269,7 +386,6 @@ for feed_name, feed_info in feeds.items():
                     seen_urls.add(link)
                     time_str = pub_date.strftime('%H:%M') if pub_date else 'Recent'
                     
-                    # Categorize article by topic
                     topic = categorize_article(title, description, topics)
                     
                     articles.append({
@@ -279,12 +395,11 @@ for feed_name, feed_info in feeds.items():
                         'url': link,
                         'time': time_str,
                         'date': pub_date or datetime.now(),
-                        'topic': topic
+                        'topic': topic,
+                        'description': description
                     })
                     
                     source_count += 1
-                    
-                    # NO LIMIT - get all articles from feed
                         
             except Exception as e:
                 continue
@@ -310,7 +425,6 @@ print('\n' + '=' * 60)
 print('SUMMARY BY PUBLICATION')
 print('=' * 60)
 
-# Dynamically detect all publications
 all_publications = set()
 for feed_name, feed_info in feeds.items():
     all_publications.add(feed_info['acronym'])
@@ -323,7 +437,6 @@ for pub in sorted(all_publications):
 
 print('\nTotal unique articles: ' + str(len(articles)))
 
-# Print topic distribution
 print('\n' + '=' * 60)
 print('SUMMARY BY TOPIC')
 print('=' * 60)
@@ -338,16 +451,39 @@ for topic in sorted(topic_counts.keys()):
 print('=' * 60)
 
 # ============================================
+# IDENTIFY TRENDING TOPICS (FREE)
+# ============================================
+trending_topics = []
+
+if len(articles) >= MIN_ARTICLES_FOR_TRENDING:
+    print('\n' + '=' * 60)
+    print('IDENTIFYING TRENDING TOPICS')
+    print('=' * 60)
+    print(f'Articles available: {len(articles)} (min: {MIN_ARTICLES_FOR_TRENDING})')
+    
+    trending_topics = identify_trending_topics_free(articles, top_n=MAX_TRENDING_TOPICS)
+    
+    if trending_topics:
+        print(f'\n✓ Found {len(trending_topics)} trending topics:')
+        for i, trending in enumerate(trending_topics, 1):
+            print(f"  {i}. {trending['topic']}: {trending['count']} articles")
+        print('\n✅ Trending analysis complete (100% FREE)')
+    else:
+        print('\n⚠️  No significant trending topics identified (need 5+ articles per theme)')
+else:
+    print(f'\n⚠️  Trending detection: SKIPPED (only {len(articles)} articles, need {MIN_ARTICLES_FOR_TRENDING}+)')
+
+print('=' * 60)
+
+# ============================================
 # BUILD TELEGRAM MESSAGE
 # ============================================
 if not articles:
     msg = '*Financial News Digest*\n' + datetime.now().strftime('%B %d, %Y') + '\n\nNo relevant articles found today.'
     messages = [msg]
 else:
-    # Sort articles by date (most recent first)
     articles.sort(key=lambda x: x['date'], reverse=True)
     
-    # Group articles by topic, then by publication
     by_topic = defaultdict(lambda: defaultdict(list))
     for article in articles:
         by_topic[article['topic']][article['publication']].append(article)
@@ -356,19 +492,27 @@ else:
     current_msg = '*Financial News Digest*\n'
     current_msg = current_msg + datetime.now().strftime('%B %d, %Y') + '\n\n'
     
-    # Count total articles and publications
     total_articles = len(articles)
     all_pubs = set(article['publication'] for article in articles)
     
     current_msg = current_msg + str(total_articles) + ' articles from ' + str(len(all_pubs)) + ' publications\n'
     current_msg = current_msg + '━━━━━━━━━━━━━━━━━\n\n'
     
+    # Add trending section if available
+    if trending_topics:
+        current_msg = current_msg + '*🔥 TRENDING TODAY*\n\n'
+        
+        for trending in trending_topics:
+            current_msg = current_msg + '*' + trending['topic'] + '* (' + str(trending['count']) + ' articles)\n'
+            current_msg = current_msg + trending['summary'] + '\n\n'
+        
+        current_msg = current_msg + '━━━━━━━━━━━━━━━━━\n\n'
+    
     def add_section(msg, section_text):
         if len(msg) + len(section_text) > 3800:
             return msg, section_text
         return msg + section_text, ''
     
-    # Build sections by topic (in order defined in topics.txt)
     for topic_config in topics:
         topic_name = topic_config['name']
         
@@ -380,35 +524,28 @@ else:
         if not publications_in_topic:
             continue
         
-        # Start topic section
         section = '*' + topic_name + '*\n\n'
         
-        # Sort publications alphabetically within topic
         for pub_acronym in sorted(publications_in_topic.keys()):
             articles_from_pub = publications_in_topic[pub_acronym]
             
             if not articles_from_pub:
                 continue
             
-            # Sort by date within publication (most recent first)
             articles_from_pub = sorted(articles_from_pub, key=lambda x: x['date'], reverse=True)
             
-            # Add publication heading
             section = section + '_' + pub_acronym + '_\n'
             
-            # Add all articles from this publication in this topic
             for i, article in enumerate(articles_from_pub, 1):
                 title_short = article['title']
                 
-                # Aggressive shortening for single line display (50 chars max)
-                if len(title_short) > 80:
-                    title_short = title_short[:77] + '...'
+                if len(title_short) > 75:
+                    title_short = title_short[:72] + '...'
                 
                 section = section + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
             
             section = section + '\n'
         
-        # Try to add this topic section to current message
         current_msg, overflow = add_section(current_msg, section)
         if overflow:
             messages.append(current_msg)
