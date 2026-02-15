@@ -401,8 +401,8 @@ else:
                 title_short = article['title']
                 
                 # Aggressive shortening for single line display (50 chars max)
-                if len(title_short) > 50:
-                    title_short = title_short[:47] + '...'
+                if len(title_short) > 100:
+                    title_short = title_short[:97] + '...'
                 
                 section = section + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
             
