@@ -23,7 +23,7 @@ jobs:
         run: python test_feeds.py
       
       - name: Upload cleaned feeds
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: cleaned-feeds
           path: feeds_cleaned.txt
