@@ -206,7 +206,8 @@ for source, url in feeds.items():
         recent_count = 0
         source_count = 0
         
-        for entry in feed.entries[:40]:
+        # INCREASED: Check up to 100 entries per feed (was 40)
+        for entry in feed.entries[:100]:
             try:
                 pub_date = None
                 if hasattr(entry, 'published_parsed') and entry.published_parsed:
@@ -255,8 +256,8 @@ for source, url in feeds.items():
                     
                     source_count += 1
                     
-                    # Max 10 articles per feed
-                    if source_count >= 10:
+                    # INCREASED: Max 20 articles per feed (was 10)
+                    if source_count >= 20:
                         break
                         
             except Exception as e:
@@ -345,7 +346,8 @@ else:
         if topic_name not in by_topic:
             continue
         
-        topic_articles = by_topic[topic_name][:15]  # Max 15 per topic
+        # INCREASED: Max 25 articles per topic (was 15)
+        topic_articles = by_topic[topic_name][:25]
         
         if not topic_articles:
             continue
