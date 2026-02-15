@@ -1,77 +1,76 @@
-# Discovered RSS Feeds
-# Generated: 2026-02-15 05:57
+# Financial News RSS Feeds - Tested & Working
+# Format: Feed Name|Acronym|URL
+# Generated: 2026-02-15
 # Total: 60 working feeds
 
 # Business Standard - 8 feeds
-Business Standard Finance-Bs-Banking-Finance-101|https://www.business-standard.com/rss/finance-bs-banking-finance-101.rss
-Business Standard Markets-106|https://www.business-standard.com/rss/markets-106.rss
-Business Standard Economy-Policy-102|https://www.business-standard.com/rss/economy-policy-102.rss
-Business Standard Companies-101|https://www.business-standard.com/rss/companies-101.rss
-Business Standard Finance-Bs-Insurance-103|https://www.business-standard.com/rss/finance-bs-insurance-103.rss
-Business Standard Finance-News-101|https://www.business-standard.com/rss/finance-news-101.rss
-Business Standard Technology-108|https://www.business-standard.com/rss/technology-108.rss
-Business Standard Opinion-103|https://www.business-standard.com/rss/opinion-103.rss
+BS Banking|BS|https://www.business-standard.com/rss/finance-bs-banking-finance-101.rss
+BS Markets|BS|https://www.business-standard.com/rss/markets-106.rss
+BS Economy|BS|https://www.business-standard.com/rss/economy-policy-102.rss
+BS Companies|BS|https://www.business-standard.com/rss/companies-101.rss
+BS Insurance|BS|https://www.business-standard.com/rss/finance-bs-insurance-103.rss
+BS Finance|BS|https://www.business-standard.com/rss/finance-news-101.rss
+BS Technology|BS|https://www.business-standard.com/rss/technology-108.rss
+BS Opinion|BS|https://www.business-standard.com/rss/opinion-103.rss
 
 # Economic Times - 6 feeds
-Economic Times 1977021501|https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms
-Economic Times 13358259|https://economictimes.indiatimes.com/industry/banking/finance/rssfeeds/13358259.cms
-Economic Times 2146842|https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms
-Economic Times 1373380680|https://economictimes.indiatimes.com/news/economy/rssfeeds/1373380680.cms
-Economic Times 837555174|https://economictimes.indiatimes.com/wealth/rssfeeds/837555174.cms
-Economic Times 13357270|https://economictimes.indiatimes.com/tech/rssfeeds/13357270.cms
+ET Markets|ET|https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms
+ET Finance|ET|https://economictimes.indiatimes.com/industry/banking/finance/rssfeeds/13358259.cms
+ET Stocks|ET|https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms
+ET Economy|ET|https://economictimes.indiatimes.com/news/economy/rssfeeds/1373380680.cms
+ET Wealth|ET|https://economictimes.indiatimes.com/wealth/rssfeeds/837555174.cms
+ET Tech|ET|https://economictimes.indiatimes.com/tech/rssfeeds/13357270.cms
 
 # Financial Times - 17 feeds
-Financial Times Markets|https://www.ft.com/markets?format=rss
-Financial Times Financials|https://www.ft.com/companies/financials?format=rss
-Financial Times Economy|https://www.ft.com/world/economy?format=rss
-Financial Times Companies|https://www.ft.com/companies?format=rss
-Financial Times India|https://www.ft.com/india?format=rss
-Financial Times Asia-Pacific|https://www.ft.com/markets/asia-pacific?format=rss
-Financial Times Technology|https://www.ft.com/technology?format=rss
-Financial Times Equities|https://www.ft.com/equities?format=rss
-Financial Times Currencies|https://www.ft.com/currencies?format=rss
-Financial Times Commodities|https://www.ft.com/commodities?format=rss
-Financial Times Opinion|https://www.ft.com/opinion?format=rss
-Financial Times Lex|https://www.ft.com/lex?format=rss
-Financial Times Uk|https://www.ft.com/world/uk?format=rss
-Financial Times Us|https://www.ft.com/world/us?format=rss
-Financial Times Climate-Capital|https://www.ft.com/climate-capital?format=rss
-Financial Times Cryptocurrencies|https://www.ft.com/cryptocurrencies?format=rss
-Financial Times Energy|https://www.ft.com/energy?format=rss
+FT Markets|FT|https://www.ft.com/markets?format=rss
+FT Banking|FT|https://www.ft.com/companies/financials?format=rss
+FT Economy|FT|https://www.ft.com/world/economy?format=rss
+FT Companies|FT|https://www.ft.com/companies?format=rss
+FT India|FT|https://www.ft.com/india?format=rss
+FT Asia|FT|https://www.ft.com/markets/asia-pacific?format=rss
+FT Technology|FT|https://www.ft.com/technology?format=rss
+FT Equities|FT|https://www.ft.com/equities?format=rss
+FT Currencies|FT|https://www.ft.com/currencies?format=rss
+FT Commodities|FT|https://www.ft.com/commodities?format=rss
+FT Opinion|FT|https://www.ft.com/opinion?format=rss
+FT Lex|FT|https://www.ft.com/lex?format=rss
+FT UK|FT|https://www.ft.com/world/uk?format=rss
+FT US|FT|https://www.ft.com/world/us?format=rss
+FT Climate|FT|https://www.ft.com/climate-capital?format=rss
+FT Crypto|FT|https://www.ft.com/cryptocurrencies?format=rss
+FT Energy|FT|https://www.ft.com/energy?format=rss
 
-# LiveMint - 13 feeds
-LiveMint Markets|https://www.livemint.com/rss/markets
-LiveMint Money|https://www.livemint.com/rss/money
-LiveMint Companies|https://www.livemint.com/rss/companies
-LiveMint Technology|https://www.livemint.com/rss/technology
-LiveMint Industry|https://www.livemint.com/rss/industry
-LiveMint Opinion|https://www.livemint.com/rss/opinion
-LiveMint Politics|https://www.livemint.com/rss/politics
-LiveMint Budget|https://www.livemint.com/rss/budget
-LiveMint Elections|https://www.livemint.com/rss/elections
-LiveMint Economy|https://www.livemint.com/rss/economy
-LiveMint Education|https://www.livemint.com/rss/education
-LiveMint Sports|https://www.livemint.com/rss/sports
-LiveMint Latest-News|https://www.livemint.com/rss/latest-news
+# Mint - 13 feeds
+Mint Markets|Mint|https://www.livemint.com/rss/markets
+Mint Money|Mint|https://www.livemint.com/rss/money
+Mint Companies|Mint|https://www.livemint.com/rss/companies
+Mint Technology|Mint|https://www.livemint.com/rss/technology
+Mint Industry|Mint|https://www.livemint.com/rss/industry
+Mint Opinion|Mint|https://www.livemint.com/rss/opinion
+Mint Politics|Mint|https://www.livemint.com/rss/politics
+Mint Budget|Mint|https://www.livemint.com/rss/budget
+Mint Elections|Mint|https://www.livemint.com/rss/elections
+Mint Economy|Mint|https://www.livemint.com/rss/economy
+Mint Education|Mint|https://www.livemint.com/rss/education
+Mint Sports|Mint|https://www.livemint.com/rss/sports
+Mint Latest|Mint|https://www.livemint.com/rss/latest-news
 
 # New York Times - 11 feeds
-New York Times Business|https://rss.nytimes.com/services/xml/rss/nyt/Business.xml
-New York Times Economy|https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml
-New York Times Dealbook|https://rss.nytimes.com/services/xml/rss/nyt/DealBook.xml
-New York Times Yourmoney|https://rss.nytimes.com/services/xml/rss/nyt/YourMoney.xml
-New York Times Technology|https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml
-New York Times Smallbusiness|https://rss.nytimes.com/services/xml/rss/nyt/SmallBusiness.xml
-New York Times World|https://rss.nytimes.com/services/xml/rss/nyt/World.xml
-New York Times Politics|https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml
-New York Times Science|https://rss.nytimes.com/services/xml/rss/nyt/Science.xml
-New York Times Health|https://rss.nytimes.com/services/xml/rss/nyt/Health.xml
-New York Times Climate|https://rss.nytimes.com/services/xml/rss/nyt/Climate.xml
+NYT Business|NYT|https://rss.nytimes.com/services/xml/rss/nyt/Business.xml
+NYT Economy|NYT|https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml
+NYT DealBook|NYT|https://rss.nytimes.com/services/xml/rss/nyt/DealBook.xml
+NYT Your Money|NYT|https://rss.nytimes.com/services/xml/rss/nyt/YourMoney.xml
+NYT Technology|NYT|https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml
+NYT Small Business|NYT|https://rss.nytimes.com/services/xml/rss/nyt/SmallBusiness.xml
+NYT World|NYT|https://rss.nytimes.com/services/xml/rss/nyt/World.xml
+NYT Politics|NYT|https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml
+NYT Science|NYT|https://rss.nytimes.com/services/xml/rss/nyt/Science.xml
+NYT Health|NYT|https://rss.nytimes.com/services/xml/rss/nyt/Health.xml
+NYT Climate|NYT|https://rss.nytimes.com/services/xml/rss/nyt/Climate.xml
 
 # Wall Street Journal - 5 feeds
-Wall Street Journal Rssmarketsmain|https://feeds.content.dowjones.io/public/rss/RSSMarketsMain
-Wall Street Journal Wsjcomusbusiness|https://feeds.content.dowjones.io/public/rss/WSJcomUSBusiness
-Wall Street Journal Rssworldnews|https://feeds.content.dowjones.io/public/rss/RSSWorldNews
-Wall Street Journal Rsswsjd|https://feeds.content.dowjones.io/public/rss/RSSWSJD
-Wall Street Journal Rsslifestyle|https://feeds.content.dowjones.io/public/rss/RSSLifestyle
-
-
+WSJ Markets|WSJ|https://feeds.content.dowjones.io/public/rss/RSSMarketsMain
+WSJ Business|WSJ|https://feeds.content.dowjones.io/public/rss/WSJcomUSBusiness
+WSJ World|WSJ|https://feeds.content.dowjones.io/public/rss/RSSWorldNews
+WSJ Tech|WSJ|https://feeds.content.dowjones.io/public/rss/RSSWSJD
+WSJ Lifestyle|WSJ|https://feeds.content.dowjones.io/public/rss/RSSLifestyle
