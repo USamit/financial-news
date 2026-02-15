@@ -11,7 +11,7 @@ MARKETS & TRADING|nifty,sensex,market,markets,stock,stocks,equity,equities,share
 
 INSURANCE|insurance,insurer,insurers,reinsurance,underwriting,premium,premiums,policyholder,claim,claims,life insurance,lic,health insurance,general insurance,motor insurance,claims ratio,solvency
 
-ECONOMY & POLICY|economy,economic,gdp,growth,recession,fiscal,budget,deficit,government,policy,regulation,tax,taxation,treasury,sovereign
+ECONOMY & POLICY|economy,economic,gdp,growth,recession,fiscal,budget,deficit,government,policy,regulation,tax,taxation,treasury,sovereign,trade,tariff,tariffs,export,import,trade deal,bilateral,sanctions,trump,biden,modi,congress,trade agreement,trade war,protectionism,free trade,customs,duties,commerce
 
 REGULATION & COMPLIANCE|sebi,irdai,irda,regulatory,regulation,compliance,regulator,guidelines,norms,circular,notification
 
