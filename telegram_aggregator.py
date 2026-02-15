@@ -152,6 +152,26 @@ def get_publication(feed_name):
     return feed_name
 
 # ============================================
+# GET PUBLICATION DISPLAY NAME (ACRONYM)
+# ============================================
+def get_publication_display_name(pub_code):
+    """Convert publication code to popular acronym/short name"""
+    acronym_map = {
+        'ET': 'ET',
+        'Mint': 'Mint',
+        'FT': 'FT',
+        'WSJ': 'WSJ',
+        'BS': 'BS',
+        'Business': 'BS',  # Business Standard
+        'MC': 'MC',
+        'MoneyControl': 'MC',
+        'NYT': 'NYT',
+        'New': 'NYT',  # New York Times
+    }
+    
+    return acronym_map.get(pub_code, pub_code)
+
+# ============================================
 # CATEGORIZE ARTICLE BY TOPIC
 # ============================================
 def categorize_article(title, description, topics):
@@ -361,7 +381,7 @@ else:
     total_articles = len(articles)
     all_pubs = set(article['publication'] for article in articles)
     
-    current_msg = current_msg + str(total_articles) + ' articles from ' + str(len(all_pubs)) + ' publications across ' + str(len(by_topic)) + ' topics\n'
+    current_msg = current_msg + str(total_articles) + ' articles from ' + str(len(all_pubs)) + ' publications\n'
     current_msg = current_msg + '━━━━━━━━━━━━━━━━━\n\n'
     
     def add_section(msg, section_text):
@@ -394,14 +414,19 @@ else:
             # Sort by date within publication (most recent first)
             articles_from_pub = sorted(articles_from_pub, key=lambda x: x['date'], reverse=True)
             
+            # Get display name (acronym)
+            display_name = get_publication_display_name(pub_name)
+            
             # Add publication heading
-            section = section + '_' + pub_name + '_\n'
+            section = section + '_' + display_name + '_\n'
             
             # Add all articles from this publication in this topic
             for i, article in enumerate(articles_from_pub, 1):
                 title_short = article['title']
-                if len(title_short) > 80:
-                    title_short = title_short[:77] + '...'
+                
+                # Aggressive shortening for single line display (50 chars max)
+                if len(title_short) > 50:
+                    title_short = title_short[:47] + '...'
                 
                 section = section + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
             
