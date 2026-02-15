@@ -121,14 +121,9 @@ def load_topics():
                         keywords_str = parts[1].strip()
                         keywords = [kw.strip().lower() for kw in keywords_str.split(',')]
                         
-                        # Separate phrases (with underscores) from single words
-                        phrases = [kw.replace('_', ' ') for kw in keywords if '_' in kw]
-                        single_words = [kw for kw in keywords if '_' not in kw]
-                        
                         topics.append({
                             'name': topic_name,
-                            'phrases': phrases,
-                            'keywords': single_words
+                            'keywords': keywords
                         })
         
         print('✓ Loaded ' + str(len(topics)) + ' topic categories')
@@ -136,27 +131,26 @@ def load_topics():
     except FileNotFoundError:
         print('⚠ topics.txt not found - using minimal defaults')
         return [
-            {'name': 'BANKING & FINANCE', 'phrases': [], 'keywords': ['bank', 'banking', 'loan', 'credit']},
-            {'name': 'MARKETS', 'phrases': [], 'keywords': ['market', 'stock', 'equity', 'share']},
-            {'name': 'INSURANCE', 'phrases': [], 'keywords': ['insurance', 'insurer', 'premium', 'claim']},
-            {'name': 'OTHER NEWS', 'phrases': [], 'keywords': ['other', 'news']}
+            {'name': 'BANKING & FINANCE', 'keywords': ['bank', 'banking', 'loan', 'credit']},
+            {'name': 'MARKETS', 'keywords': ['market', 'stock', 'equity', 'share']},
+            {'name': 'INSURANCE', 'keywords': ['insurance', 'insurer', 'premium', 'claim']},
+            {'name': 'OTHER NEWS', 'keywords': ['other', 'news']}
         ]
     except Exception as e:
         print('⚠ Error loading topics: ' + str(e))
         return [
-            {'name': 'BANKING & FINANCE', 'phrases': [], 'keywords': ['bank', 'banking', 'loan', 'credit']},
-            {'name': 'MARKETS', 'phrases': [], 'keywords': ['market', 'stock', 'equity', 'share']},
-            {'name': 'OTHER NEWS', 'phrases': [], 'keywords': ['other', 'news']}
+            {'name': 'BANKING & FINANCE', 'keywords': ['bank', 'banking', 'loan', 'credit']},
+            {'name': 'MARKETS', 'keywords': ['market', 'stock', 'equity', 'share']},
+            {'name': 'OTHER NEWS', 'keywords': ['other', 'news']}
         ]
 
 # ============================================
-# CATEGORIZE ARTICLE BY TOPIC (IMPROVED)
+# CATEGORIZE ARTICLE BY TOPIC (WITH DEBUG)
 # ============================================
-def categorize_article(title, description, topics):
+def categorize_article(title, description, topics, debug=False):
     """
-    Categorize article using weighted scoring:
-    - Phrase matches: 3 points each
-    - Single word matches: 1 point each
+    Categorize article using scoring:
+    - Each keyword match: 1 point
     - Returns topic with highest score
     """
     text = (title + ' ' + str(description)).lower()
@@ -165,23 +159,30 @@ def categorize_article(title, description, topics):
     
     for topic in topics:
         score = 0
+        matched_keywords = []
         
-        # Check phrase matches (weighted 3x)
-        for phrase in topic['phrases']:
-            if phrase in text:
-                score += 3
-        
-        # Check single word matches (weighted 1x)
+        # Check keyword matches
         for keyword in topic['keywords']:
             if keyword in text:
                 score += 1
+                matched_keywords.append(keyword)
         
         if score > 0:
-            topic_scores[topic['name']] = score
+            topic_scores[topic['name']] = {
+                'score': score,
+                'keywords': matched_keywords
+            }
+    
+    # Debug logging for suspicious articles
+    if debug or 'trump' in text or 'tariff' in text:
+        print('\n  [DEBUG] Article: ' + title[:60])
+        print('  [DEBUG] Scores:')
+        for topic_name, data in sorted(topic_scores.items(), key=lambda x: x[1]['score'], reverse=True):
+            print(f"    {topic_name}: {data['score']} ({', '.join(data['keywords'][:3])})")
     
     # Return topic with highest score
     if topic_scores:
-        best_topic = max(topic_scores, key=topic_scores.get)
+        best_topic = max(topic_scores, key=lambda x: topic_scores[x]['score'])
         return best_topic
     
     # Default category if no match
@@ -270,8 +271,8 @@ for source, url in feeds.items():
                     seen_urls.add(link)
                     time_str = pub_date.strftime('%H:%M') if pub_date else 'Recent'
                     
-                    # Categorize article by topic using improved scoring
-                    topic = categorize_article(title, description, topics)
+                    # Categorize article by topic with debug
+                    topic = categorize_article(title, description, topics, debug=True)
                     
                     articles.append({
                         'source': source,
@@ -380,21 +381,19 @@ else:
         if not topic_articles:
             continue
         
+        # Sort by source within topic
+        topic_articles_sorted = sorted(topic_articles, key=lambda x: x['source'])
+        
         section = '*' + topic_name + '*\n'
         section = section + str(len(topic_articles)) + ' articles\n\n'
         
-        for i, article in enumerate(topic_articles, 1):
+        for i, article in enumerate(topic_articles_sorted, 1):
             title_short = article['title']
-            if len(title_short) > 70:
-                title_short = title_short[:67] + '...'
+            if len(title_short) > 80:
+                title_short = title_short[:77] + '...'
             
-            # Show source in parentheses
-            source_short = article['source']
-            if len(source_short) > 20:
-                source_short = source_short[:17] + '...'
-            
+            # Simple format: just number and link
             section = section + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
-            section = section + '   _' + source_short + ' • ' + article['time'] + '_\n'
         
         section = section + '\n'
         
