@@ -69,7 +69,7 @@ def load_keywords():
 # LOAD FEEDS from feeds.txt
 # ============================================
 def load_feeds():
-    """Load RSS feeds from feeds.txt file"""
+    """Load RSS feeds from feeds.txt file with acronyms"""
     feeds = {}
     
     try:
@@ -79,21 +79,30 @@ def load_feeds():
                 if not line or line.startswith('#'):
                     continue
                 
-                # Expected format: Source Name|URL
+                # Expected format: Feed Name|Acronym|URL
                 if '|' in line:
-                    parts = line.split('|', 1)
-                    if len(parts) == 2:
-                        source_name = parts[0].strip()
+                    parts = line.split('|')
+                    
+                    # Support both old format (Name|URL) and new format (Name|Acronym|URL)
+                    if len(parts) == 3:
+                        feed_name = parts[0].strip()
+                        acronym = parts[1].strip()
+                        url = parts[2].strip()
+                        feeds[feed_name] = {'url': url, 'acronym': acronym}
+                    elif len(parts) == 2:
+                        # Old format - fallback to extracting acronym from name
+                        feed_name = parts[0].strip()
                         url = parts[1].strip()
-                        feeds[source_name] = url
+                        acronym = feed_name.split(' ')[0] if ' ' in feed_name else feed_name
+                        feeds[feed_name] = {'url': url, 'acronym': acronym}
         
         print('✓ Loaded ' + str(len(feeds)) + ' RSS feeds')
         return feeds
     except FileNotFoundError:
         print('⚠ feeds.txt not found - using minimal defaults')
         return {
-            'ET Markets': 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms',
-            'Mint Markets': 'https://www.livemint.com/rss/markets'
+            'ET Markets': {'url': 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms', 'acronym': 'ET'},
+            'Mint Markets': {'url': 'https://www.livemint.com/rss/markets', 'acronym': 'Mint'}
         }
     except Exception as e:
         print('⚠ Error loading feeds: ' + str(e))
@@ -141,35 +150,6 @@ def load_topics():
             {'name': 'BANKING & FINANCE', 'keywords': ['bank', 'banking', 'loan', 'credit']},
             {'name': 'OTHER NEWS', 'keywords': ['other', 'news']}
         ]
-
-# ============================================
-# EXTRACT PUBLICATION FROM FEED NAME
-# ============================================
-def get_publication(feed_name):
-    """Extract publication name from feed name (e.g. 'ET Markets' -> 'ET')"""
-    if ' ' in feed_name:
-        return feed_name.split(' ')[0]
-    return feed_name
-
-# ============================================
-# GET PUBLICATION DISPLAY NAME (ACRONYM)
-# ============================================
-def get_publication_display_name(pub_code):
-    """Convert publication code to popular acronym/short name"""
-    acronym_map = {
-        'ET': 'ET',
-        'Mint': 'Mint',
-        'FT': 'FT',
-        'WSJ': 'WSJ',
-        'BS': 'BS',
-        'Business': 'BS',  # Business Standard
-        'MC': 'MC',
-        'MoneyControl': 'MC',
-        'NYT': 'NYT',
-        'New': 'NYT',  # New York Times
-    }
-    
-    return acronym_map.get(pub_code, pub_code)
 
 # ============================================
 # CATEGORIZE ARTICLE BY TOPIC
@@ -224,19 +204,22 @@ print('\n' + '=' * 60)
 print('FETCHING ARTICLES FROM ' + str(len(feeds)) + ' FEEDS')
 print('=' * 60)
 
-for source, url in feeds.items():
+for feed_name, feed_info in feeds.items():
     try:
-        print('\n' + source + ':')
+        url = feed_info['url']
+        acronym = feed_info['acronym']
+        
+        print('\n' + feed_name + ':')
         
         try:
             feed = feedparser.parse(url)
         except socket.timeout:
             print('  ⏱️  TIMEOUT - Skipping')
-            feed_stats[source] = {'total': 0, 'recent': 0, 'relevant': 0}
+            feed_stats[feed_name] = {'total': 0, 'recent': 0, 'relevant': 0}
             continue
         except Exception as e:
             print('  ❌ Error: ' + str(e)[:50])
-            feed_stats[source] = {'total': 0, 'recent': 0, 'relevant': 0}
+            feed_stats[feed_name] = {'total': 0, 'recent': 0, 'relevant': 0}
             continue
         
         total_entries = len(feed.entries)
@@ -244,7 +227,7 @@ for source, url in feeds.items():
         
         if not feed.entries:
             print('  No entries found')
-            feed_stats[source] = {'total': 0, 'recent': 0, 'relevant': 0}
+            feed_stats[feed_name] = {'total': 0, 'recent': 0, 'relevant': 0}
             continue
         
         recent_count = 0
@@ -286,15 +269,12 @@ for source, url in feeds.items():
                     seen_urls.add(link)
                     time_str = pub_date.strftime('%H:%M') if pub_date else 'Recent'
                     
-                    # Extract publication name
-                    publication = get_publication(source)
-                    
                     # Categorize article by topic
                     topic = categorize_article(title, description, topics)
                     
                     articles.append({
-                        'source': source,
-                        'publication': publication,
+                        'source': feed_name,
+                        'publication': acronym,
                         'title': title,
                         'url': link,
                         'time': time_str,
@@ -309,7 +289,7 @@ for source, url in feeds.items():
             except Exception as e:
                 continue
         
-        feed_stats[source] = {
+        feed_stats[feed_name] = {
             'total': total_entries,
             'recent': recent_count,
             'relevant': source_count
@@ -320,7 +300,7 @@ for source, url in feeds.items():
         
     except Exception as e:
         print('  ❌ Error: ' + str(e)[:50])
-        feed_stats[source] = {'total': 0, 'recent': 0, 'relevant': 0}
+        feed_stats[feed_name] = {'total': 0, 'recent': 0, 'relevant': 0}
         continue
 
 # ============================================
@@ -332,12 +312,11 @@ print('=' * 60)
 
 # Dynamically detect all publications
 all_publications = set()
-for source in feed_stats.keys():
-    pub = get_publication(source)
-    all_publications.add(pub)
+for feed_name, feed_info in feeds.items():
+    all_publications.add(feed_info['acronym'])
 
 for pub in sorted(all_publications):
-    pub_feeds = {k: v for k, v in feed_stats.items() if get_publication(k) == pub}
+    pub_feeds = {k: v for k, v in feed_stats.items() if feeds.get(k, {}).get('acronym') == pub}
     if pub_feeds:
         total_rel = sum(f['relevant'] for f in pub_feeds.values())
         print(pub + ': ' + str(total_rel) + ' articles from ' + str(len(pub_feeds)) + ' feeds')
@@ -405,8 +384,8 @@ else:
         section = '*' + topic_name + '*\n\n'
         
         # Sort publications alphabetically within topic
-        for pub_name in sorted(publications_in_topic.keys()):
-            articles_from_pub = publications_in_topic[pub_name]
+        for pub_acronym in sorted(publications_in_topic.keys()):
+            articles_from_pub = publications_in_topic[pub_acronym]
             
             if not articles_from_pub:
                 continue
@@ -414,11 +393,8 @@ else:
             # Sort by date within publication (most recent first)
             articles_from_pub = sorted(articles_from_pub, key=lambda x: x['date'], reverse=True)
             
-            # Get display name (acronym)
-            display_name = get_publication_display_name(pub_name)
-            
             # Add publication heading
-            section = section + '_' + display_name + '_\n'
+            section = section + '_' + pub_acronym + '_\n'
             
             # Add all articles from this publication in this topic
             for i, article in enumerate(articles_from_pub, 1):
