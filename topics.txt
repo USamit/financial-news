@@ -1,0 +1,28 @@
+# Financial News Topics Configuration
+# Format: Topic Name|keyword1,keyword2,keyword3
+# Topics appear in the order listed here
+# Lines starting with # are comments
+
+BANKING & FINANCE|bank,banks,banking,lender,lenders,lending,loan,loans,mortgage,deposit,deposits,credit,nbfc,hfc,psu bank,public sector bank,npa,npas,bad loan,provision,capital adequacy,basel
+
+CENTRAL BANKS & RATES|rbi,fed,ecb,boj,central bank,monetary policy,interest rate,rate cut,rate hike,repo,reverse repo,policy rate,inflation,cpi,liquidity,tightening,easing
+
+MARKETS & TRADING|nifty,sensex,market,markets,stock,stocks,equity,equities,share,shares,index,indices,trading,investor,volatility,rally,sell-off,bull,bear,correction,crash
+
+INSURANCE|insurance,insurer,insurers,reinsurance,underwriting,premium,premiums,policyholder,claim,claims,life insurance,lic,health insurance,general insurance,motor insurance,claims ratio,solvency
+
+ECONOMY & POLICY|economy,economic,gdp,growth,recession,fiscal,budget,deficit,government,policy,regulation,tax,taxation,treasury,sovereign
+
+REGULATION & COMPLIANCE|sebi,irdai,irda,regulatory,regulation,compliance,regulator,guidelines,norms,circular,notification
+
+COMPANIES & EARNINGS|earnings,profit,profits,loss,quarterly results,q1,q2,q3,q4,revenue,margin,margins,balance sheet,cash flow,dividend
+
+DEALS & IPOS|ipo,listing,buyback,merger,acquisition,m&a,takeover,stake sale,divestment,fundraising,private equity,venture capital,valuation
+
+MUTUAL FUNDS & INVESTMENTS|mutual fund,mf,aum,fund,funds,asset management,etf,sip,nav,fund manager,portfolio
+
+BONDS & DEBT MARKETS|bond,bonds,bond yield,debt,yield,yields,yield curve,spread,spreads,g-sec,gilts,treasury bill,t-bill,commercial paper
+
+TECHNOLOGY & FINTECH|fintech,digital,upi,payment,payments,wallet,neobank,blockchain,crypto,ai,artificial intelligence,machine learning,technology,tech,innovation
+
+OTHER NEWS|other,news,general
