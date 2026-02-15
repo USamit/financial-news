@@ -26,6 +26,7 @@ Mint Mutual Funds|https://www.livemint.com/rss/mutual-fund
 Mint Personal Finance|https://www.livemint.com/rss/personal-finance
 Mint Budget|https://www.livemint.com/rss/budget
 Mint Premium|https://www.livemint.com/rss/premium
+Mint Focus|https://www.livemint.com/rss/focus
 
 # Financial Times - Direct RSS (12 feeds)
 FT Markets|https://www.ft.com/markets?format=rss
