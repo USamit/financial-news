@@ -1,55 +1,9 @@
-# Financial News RSS Feeds
+# Financial News RSS Feeds - Auto-cleaned
 # Format: Source Name|Feed URL
-# Lines starting with # are comments
+# Generated: 2026-02-15 05:33
+# Working feeds only
 
-# Economic Times - Direct RSS (6 feeds)
-ET Markets|https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms
-ET Banking|https://economictimes.indiatimes.com/industry/banking/finance/banking/rssfeeds/13358256.cms
-ET Finance|https://economictimes.indiatimes.com/industry/banking/finance/rssfeeds/13358259.cms
-ET Insurance|https://economictimes.indiatimes.com/industry/banking/finance/insure/rssfeeds/13358276.cms
-ET Stocks|https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms
-ET Economy|https://economictimes.indiatimes.com/news/economy/rssfeeds/1373380680.cms
-
-# Mint - Direct RSS (15 feeds)
-Mint Markets|https://www.livemint.com/rss/markets
-Mint Money|https://www.livemint.com/rss/money
-Mint Banking|https://www.livemint.com/rss/industry/banking
-Mint Insurance|https://www.livemint.com/rss/insurance
-Mint Companies|https://www.livemint.com/rss/companies
-Mint Economy|https://www.livemint.com/rss/news/india
-Mint Technology|https://www.livemint.com/rss/technology
-Mint Industry|https://www.livemint.com/rss/industry
-Mint Opinion|https://www.livemint.com/rss/opinion
-Mint Politics|https://www.livemint.com/rss/politics
-Mint AI|https://www.livemint.com/rss/ai
-Mint Mutual Funds|https://www.livemint.com/rss/mutual-fund
-Mint Personal Finance|https://www.livemint.com/rss/personal-finance
-Mint Budget|https://www.livemint.com/rss/budget
-Mint Premium|https://www.livemint.com/rss/premium
-Mint Focus|https://www.livemint.com/rss/focus
-
-# Financial Times - Direct RSS (12 feeds)
-FT Markets|https://www.ft.com/markets?format=rss
-FT Banking|https://www.ft.com/companies/financials?format=rss
-FT World Economy|https://www.ft.com/world/economy?format=rss
-FT Companies|https://www.ft.com/companies?format=rss
-FT India|https://www.ft.com/india?format=rss
-FT Asia Markets|https://www.ft.com/markets/asia-pacific?format=rss
-FT Technology|https://www.ft.com/technology?format=rss
-FT Equities|https://www.ft.com/equities?format=rss
-FT Currencies|https://www.ft.com/currencies?format=rss
-FT Commodities|https://www.ft.com/commodities?format=rss
-FT Opinion|https://www.ft.com/opinion?format=rss
-FT Lex Column|https://www.ft.com/lex?format=rss
-
-# Wall Street Journal - Direct RSS (5 feeds)
-WSJ Markets|https://feeds.content.dowjones.io/public/rss/RSSMarketsMain
-WSJ Finance|https://feeds.content.dowjones.io/public/rss/WSJcomUSBusiness
-WSJ Economy|https://feeds.content.dowjones.io/public/rss/RSSWorldNews
-WSJ India|https://feeds.content.dowjones.io/public/rss/WSJcomIndia
-WSJ Asia|https://feeds.content.dowjones.io/public/rss/WSJcomAsia
-
-# Business Standard - Indian Financial News (6 feeds)
+# BS (6 feeds)
 BS Banking|https://www.business-standard.com/rss/finance-bs-banking-finance-101.rss
 BS Markets|https://www.business-standard.com/rss/markets-106.rss
 BS Economy|https://www.business-standard.com/rss/economy-policy-102.rss
@@ -57,19 +11,43 @@ BS Companies|https://www.business-standard.com/rss/companies-101.rss
 BS Insurance|https://www.business-standard.com/rss/finance-bs-insurance-103.rss
 BS Finance|https://www.business-standard.com/rss/finance-news-101.rss
 
-# MoneyControl - Indian Markets (4 feeds)
-MC Markets|https://www.moneycontrol.com/rss/marketreports.xml
-MC News|https://www.moneycontrol.com/rss/latestnews.xml
-MC MF|https://www.moneycontrol.com/rss/mutualfunds.xml
-MC Business|https://www.moneycontrol.com/rss/business.xml
+# ET (4 feeds)
+ET Markets|https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms
+ET Finance|https://economictimes.indiatimes.com/industry/banking/finance/rssfeeds/13358259.cms
+ET Stocks|https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms
+ET Economy|https://economictimes.indiatimes.com/news/economy/rssfeeds/1373380680.cms
 
-# New York Times - Financial & Business (8 feeds)
+# FT (11 feeds)
+FT Markets|https://www.ft.com/markets?format=rss
+FT Banking|https://www.ft.com/companies/financials?format=rss
+FT World Economy|https://www.ft.com/world/economy?format=rss
+FT Companies|https://www.ft.com/companies?format=rss
+FT India|https://www.ft.com/india?format=rss
+FT Technology|https://www.ft.com/technology?format=rss
+FT Equities|https://www.ft.com/equities?format=rss
+FT Currencies|https://www.ft.com/currencies?format=rss
+FT Commodities|https://www.ft.com/commodities?format=rss
+FT Opinion|https://www.ft.com/opinion?format=rss
+FT Lex Column|https://www.ft.com/lex?format=rss
+
+# Mint (7 feeds)
+Mint Markets|https://www.livemint.com/rss/markets
+Mint Money|https://www.livemint.com/rss/money
+Mint Companies|https://www.livemint.com/rss/companies
+Mint Technology|https://www.livemint.com/rss/technology
+Mint Industry|https://www.livemint.com/rss/industry
+Mint Opinion|https://www.livemint.com/rss/opinion
+Mint Politics|https://www.livemint.com/rss/politics
+
+# NYT (5 feeds)
 NYT Business|https://rss.nytimes.com/services/xml/rss/nyt/Business.xml
 NYT Economy|https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml
 NYT DealBook|https://rss.nytimes.com/services/xml/rss/nyt/DealBook.xml
 NYT Your Money|https://rss.nytimes.com/services/xml/rss/nyt/YourMoney.xml
 NYT Technology|https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml
-NYT Markets|https://rss.nytimes.com/services/xml/rss/nyt/Markets.xml
-NYT Small Business|https://rss.nytimes.com/services/xml/rss/nyt/SmallBusiness.xml
-NYT Global Business|https://rss.nytimes.com/services/xml/rss/nyt/InternationalBusiness.xml
+
+# WSJ (3 feeds)
+WSJ Markets|https://feeds.content.dowjones.io/public/rss/RSSMarketsMain
+WSJ Finance|https://feeds.content.dowjones.io/public/rss/WSJcomUSBusiness
+WSJ Economy|https://feeds.content.dowjones.io/public/rss/RSSWorldNews
 
