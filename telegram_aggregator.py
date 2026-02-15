@@ -99,10 +99,71 @@ def load_feeds():
         print('⚠ Error loading feeds: ' + str(e))
         return {}
 
+# ============================================
+# LOAD TOPICS from topics.txt
+# ============================================
+def load_topics():
+    """Load topic categorization from topics.txt file"""
+    topics = []
+    
+    try:
+        with open('topics.txt', 'r') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                
+                # Expected format: Topic Name|keyword1,keyword2,keyword3
+                if '|' in line:
+                    parts = line.split('|', 1)
+                    if len(parts) == 2:
+                        topic_name = parts[0].strip()
+                        keywords_str = parts[1].strip()
+                        keywords = [kw.strip().lower() for kw in keywords_str.split(',')]
+                        topics.append({
+                            'name': topic_name,
+                            'keywords': keywords
+                        })
+        
+        print('✓ Loaded ' + str(len(topics)) + ' topic categories')
+        return topics
+    except FileNotFoundError:
+        print('⚠ topics.txt not found - using minimal defaults')
+        return [
+            {'name': 'BANKING & FINANCE', 'keywords': ['bank', 'banking', 'loan', 'credit']},
+            {'name': 'MARKETS', 'keywords': ['market', 'stock', 'equity', 'share']},
+            {'name': 'INSURANCE', 'keywords': ['insurance', 'insurer', 'premium', 'claim']},
+            {'name': 'OTHER NEWS', 'keywords': ['other', 'news']}
+        ]
+    except Exception as e:
+        print('⚠ Error loading topics: ' + str(e))
+        return [
+            {'name': 'BANKING & FINANCE', 'keywords': ['bank', 'banking', 'loan', 'credit']},
+            {'name': 'MARKETS', 'keywords': ['market', 'stock', 'equity', 'share']},
+            {'name': 'OTHER NEWS', 'keywords': ['other', 'news']}
+        ]
+
+# ============================================
+# CATEGORIZE ARTICLE BY TOPIC
+# ============================================
+def categorize_article(title, description, topics):
+    """Categorize article into topic based on keywords"""
+    text = (title + ' ' + str(description)).lower()
+    
+    # Check each topic's keywords (order matters - first match wins)
+    for topic in topics:
+        for keyword in topic['keywords']:
+            if keyword in text:
+                return topic['name']
+    
+    # Default category if no match
+    return 'OTHER NEWS'
+
 # Load configuration
 RECIPIENTS = load_recipients()
 keywords = load_keywords()
 feeds = load_feeds()
+topics = load_topics()
 
 if not feeds:
     print('ERROR: No feeds loaded!')
@@ -180,12 +241,16 @@ for source, url in feeds.items():
                     seen_urls.add(link)
                     time_str = pub_date.strftime('%H:%M') if pub_date else 'Recent'
                     
+                    # Categorize article by topic
+                    topic = categorize_article(title, description, topics)
+                    
                     articles.append({
                         'source': source,
                         'title': title,
                         'url': link,
                         'time': time_str,
-                        'date': pub_date or datetime.now()
+                        'date': pub_date or datetime.now(),
+                        'topic': topic
                     })
                     
                     source_count += 1
@@ -221,7 +286,6 @@ print('=' * 60)
 # Dynamically detect all publications
 all_publications = set()
 for source in feed_stats.keys():
-    # Extract publication name (everything before first space)
     if ' ' in source:
         pub = source.split(' ')[0]
         all_publications.add(pub)
@@ -233,6 +297,19 @@ for pub in sorted(all_publications):
         print(pub + ': ' + str(total_rel) + ' articles from ' + str(len(pub_feeds)) + ' feeds')
 
 print('\nTotal unique articles: ' + str(len(articles)))
+
+# Print topic distribution
+print('\n' + '=' * 60)
+print('SUMMARY BY TOPIC')
+print('=' * 60)
+
+topic_counts = defaultdict(int)
+for article in articles:
+    topic_counts[article['topic']] += 1
+
+for topic in sorted(topic_counts.keys()):
+    print(topic + ': ' + str(topic_counts[topic]) + ' articles')
+
 print('=' * 60)
 
 # ============================================
@@ -242,77 +319,59 @@ if not articles:
     msg = '*Financial News Digest*\n' + datetime.now().strftime('%B %d, %Y') + '\n\nNo relevant articles found today.'
     messages = [msg]
 else:
+    # Sort articles by date (most recent first)
     articles.sort(key=lambda x: x['date'], reverse=True)
     
-    by_source = defaultdict(list)
+    # Group articles by topic
+    by_topic = defaultdict(list)
     for article in articles:
-        by_source[article['source']].append(article)
+        by_topic[article['topic']].append(article)
     
     messages = []
     current_msg = '*Financial News Digest*\n'
     current_msg = current_msg + datetime.now().strftime('%B %d, %Y') + '\n\n'
-    current_msg = current_msg + str(len(articles)) + ' unique articles from ' + str(len(by_source)) + ' sources\n'
+    current_msg = current_msg + str(len(articles)) + ' articles across ' + str(len(by_topic)) + ' topics\n'
     current_msg = current_msg + '━━━━━━━━━━━━━━━━━\n\n'
-    
-    # ============================================
-    # DYNAMIC PUBLICATION DETECTION
-    # ============================================
-    # Automatically detect all publications and group sources
-    publications = defaultdict(list)
-    
-    for source in by_source.keys():
-        # Extract publication prefix (everything before first space)
-        if ' ' in source:
-            pub_prefix = source.split(' ')[0]
-            publications[pub_prefix].append(source)
-        else:
-            # If no space, use the whole source name as publication
-            publications[source].append(source)
-    
-    # Sort publications alphabetically
-    sorted_pubs = sorted(publications.keys())
     
     def add_section(msg, section_text):
         if len(msg) + len(section_text) > 3800:
             return msg, section_text
         return msg + section_text, ''
     
-    def build_section(title, sources_list, prefix=''):
-        if not sources_list:
-            return ''
-        section = '*' + title + '*\n'
-        for source in sorted(sources_list):
-            items = by_source[source][:10]
-            if items:
-                items_sorted = sorted(items, key=lambda x: x['date'], reverse=True)
-                section = section + '_' + source.replace(prefix, '') + '_\n'
-                for i, article in enumerate(items_sorted, 1):
-                    title_short = article['title']
-                    if len(title_short) > 75:
-                        title_short = title_short[:72] + '...'
-                    section = section + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
-        return section + '\n'
-    
-    # Build sections dynamically for all detected publications
-    for pub_prefix in sorted_pubs:
-        pub_sources = publications[pub_prefix]
-        if pub_sources:
-            # Create nice title (uppercase)
-            if pub_prefix == 'ET':
-                pub_title = 'ECONOMIC TIMES'
-            elif pub_prefix == 'FT':
-                pub_title = 'FINANCIAL TIMES'
-            elif pub_prefix == 'WSJ':
-                pub_title = 'WALL STREET JOURNAL'
-            else:
-                pub_title = pub_prefix.upper()
+    # Build sections by topic (in order defined in topics.txt)
+    for topic_config in topics:
+        topic_name = topic_config['name']
+        
+        if topic_name not in by_topic:
+            continue
+        
+        topic_articles = by_topic[topic_name][:15]  # Max 15 per topic
+        
+        if not topic_articles:
+            continue
+        
+        section = '*' + topic_name + '*\n'
+        section = section + str(len(topic_articles)) + ' articles\n\n'
+        
+        for i, article in enumerate(topic_articles, 1):
+            title_short = article['title']
+            if len(title_short) > 70:
+                title_short = title_short[:67] + '...'
             
-            section = build_section(pub_title, pub_sources, pub_prefix + ' ')
-            if section:
-                current_msg, overflow = add_section(current_msg, section)
-                if overflow:
-                    messages.append(current_msg)
-                    current_msg = overflow
+            # Show source in parentheses
+            source_short = article['source']
+            if len(source_short) > 20:
+                source_short = source_short[:17] + '...'
+            
+            section = section + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
+            section = section + '   _' + source_short + ' • ' + article['time'] + '_\n'
+        
+        section = section + '\n'
+        
+        current_msg, overflow = add_section(current_msg, section)
+        if overflow:
+            messages.append(current_msg)
+            current_msg = overflow
     
     if current_msg.strip():
         messages.append(current_msg)
