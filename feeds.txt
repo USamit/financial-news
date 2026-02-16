@@ -74,3 +74,8 @@ WSJ Business|WSJ|https://feeds.content.dowjones.io/public/rss/WSJcomUSBusiness
 WSJ World|WSJ|https://feeds.content.dowjones.io/public/rss/RSSWorldNews
 WSJ Tech|WSJ|https://feeds.content.dowjones.io/public/rss/RSSWSJD
 WSJ Lifestyle|WSJ|https://feeds.content.dowjones.io/public/rss/RSSLifestyle
+
+# Moneycontrol
+MC Latest News|MC|https://www.moneycontrol.com/rss/latestnews.xml
+MC Business|MC|https://www.moneycontrol.com/rss/business.xml
+MC Market|MC|https://www.moneycontrol.com/rss/marketreports.xml
