@@ -1,145 +1,187 @@
 import feedparser
-import socket
 from datetime import datetime, timedelta
+import socket
 
 # Set timeout
 socket.setdefaulttimeout(10)
 
-print('=' * 70)
-print('RSS FEED VALIDATOR')
-print('=' * 70)
+print('=' * 60)
+print('RSS Feed Validator')
+print('Testing all feeds from feeds.txt')
+print('=' * 60)
 
-# Load feeds
-feeds = {}
-try:
-    with open('feeds.txt', 'r') as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith('#'):
-                continue
-            if '|' in line:
-                parts = line.split('|', 1)
-                if len(parts) == 2:
-                    feeds[parts[0].strip()] = parts[1].strip()
-except Exception as e:
-    print('ERROR loading feeds.txt:', e)
+# ============================================
+# LOAD FEEDS
+# ============================================
+def load_feeds():
+    """Load feeds from feeds.txt (supports both old and new format)"""
+    feeds = []
+    
+    try:
+        with open('feeds.txt', 'r') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                
+                if '|' in line:
+                    parts = line.split('|')
+                    
+                    # New format: Feed Name|Acronym|URL
+                    if len(parts) == 3:
+                        feed_name = parts[0].strip()
+                        acronym = parts[1].strip()
+                        url = parts[2].strip()
+                        feeds.append({
+                            'name': feed_name,
+                            'acronym': acronym,
+                            'url': url
+                        })
+                    # Old format: Feed Name|URL
+                    elif len(parts) == 2:
+                        feed_name = parts[0].strip()
+                        url = parts[1].strip()
+                        acronym = feed_name.split(' ')[0] if ' ' in feed_name else feed_name
+                        feeds.append({
+                            'name': feed_name,
+                            'acronym': acronym,
+                            'url': url
+                        })
+        
+        return feeds
+    except FileNotFoundError:
+        print('ERROR: feeds.txt not found!')
+        return []
+    except Exception as e:
+        print(f'ERROR loading feeds: {str(e)}')
+        return []
+
+# ============================================
+# TEST FEEDS
+# ============================================
+feeds = load_feeds()
+
+if not feeds:
+    print('No feeds loaded!')
     exit(1)
 
-print(f'\nTesting {len(feeds)} feeds...\n')
+print(f'\nLoaded {len(feeds)} feeds from feeds.txt\n')
 
 working_feeds = []
 broken_feeds = []
-slow_feeds = []
+timeout_feeds = []
+stale_feeds = []
 
-for source, url in feeds.items():
+for i, feed_info in enumerate(feeds, 1):
+    feed_name = feed_info['name']
+    acronym = feed_info['acronym']
+    url = feed_info['url']
+    
+    print(f'[{i}/{len(feeds)}] Testing: {feed_name}')
+    
     try:
-        print(f'Testing: {source}...')
-        
         # Parse feed
-        try:
-            feed = feedparser.parse(url)
-        except socket.timeout:
-            print(f'  ⏱️  TIMEOUT')
-            slow_feeds.append((source, url, 'Timeout'))
-            continue
-        except Exception as e:
-            print(f'  ❌ ERROR: {str(e)[:50]}')
-            broken_feeds.append((source, url, str(e)[:50]))
+        feed = feedparser.parse(url)
+        
+        if not feed.entries:
+            print(f'  ❌ BROKEN: 0 entries found')
+            broken_feeds.append(feed_info)
             continue
         
-        total = len(feed.entries)
-        
-        if total == 0:
-            print(f'  ❌ BROKEN: 0 entries')
-            broken_feeds.append((source, url, 'Zero entries'))
-            continue
-        
-        # Check for recent articles (last 48 hours)
-        recent = 0
-        for entry in feed.entries[:20]:
+        # Check for recent content (last 48 hours)
+        recent_count = 0
+        for entry in feed.entries[:20]:  # Check first 20 entries
             try:
                 if hasattr(entry, 'published_parsed') and entry.published_parsed:
                     pub_date = datetime(*entry.published_parsed[:6])
-                    if (datetime.now() - pub_date) <= timedelta(days=2):
-                        recent += 1
-                else:
-                    recent += 1  # No date = assume recent
+                    if (datetime.now() - pub_date) <= timedelta(hours=48):
+                        recent_count += 1
             except:
-                continue
+                pass
         
-        if recent == 0:
-            print(f'  ⚠️  STALE: {total} total, but 0 recent (48hrs)')
-            broken_feeds.append((source, url, f'{total} entries but all >48hrs old'))
+        total_entries = len(feed.entries)
+        
+        if recent_count == 0:
+            print(f'  ⚠️  STALE: {total_entries} total entries, but 0 from last 48hrs')
+            stale_feeds.append(feed_info)
         else:
-            print(f'  ✅ WORKING: {total} total, {recent} recent')
-            working_feeds.append((source, url))
-            
+            print(f'  ✅ Working: {total_entries} total entries, {recent_count} recent (48hrs)')
+            working_feeds.append(feed_info)
+        
+    except socket.timeout:
+        print(f'  ⏱️  TIMEOUT: Request timed out')
+        timeout_feeds.append(feed_info)
     except Exception as e:
         print(f'  ❌ ERROR: {str(e)[:50]}')
-        broken_feeds.append((source, url, str(e)[:50]))
+        broken_feeds.append(feed_info)
 
-# Print Summary
-print('\n' + '=' * 70)
+# ============================================
+# SUMMARY
+# ============================================
+print('\n' + '=' * 60)
 print('SUMMARY')
-print('=' * 70)
-print(f'\n✅ WORKING FEEDS: {len(working_feeds)}')
-print(f'❌ BROKEN/STALE FEEDS: {len(broken_feeds)}')
-print(f'⏱️  TIMEOUT FEEDS: {len(slow_feeds)}')
+print('=' * 60)
+print(f'Total feeds tested: {len(feeds)}')
+print(f'✅ Working: {len(working_feeds)}')
+print(f'⚠️  Stale (>48hrs): {len(stale_feeds)}')
+print(f'⏱️  Timeout: {len(timeout_feeds)}')
+print(f'❌ Broken: {len(broken_feeds)}')
+print('=' * 60)
 
+# Show broken feeds
 if broken_feeds:
-    print('\n' + '=' * 70)
-    print('BROKEN/STALE FEEDS TO REMOVE:')
-    print('=' * 70)
-    for source, url, reason in broken_feeds:
-        print(f'\n{source}')
-        print(f'  URL: {url}')
-        print(f'  Issue: {reason}')
+    print('\n❌ BROKEN FEEDS:')
+    for feed_info in broken_feeds:
+        print(f'  - {feed_info["name"]}')
 
-if slow_feeds:
-    print('\n' + '=' * 70)
-    print('TIMEOUT FEEDS (may need to remove):')
-    print('=' * 70)
-    for source, url, reason in slow_feeds:
-        print(f'\n{source}')
-        print(f'  URL: {url}')
+# Show stale feeds
+if stale_feeds:
+    print('\n⚠️  STALE FEEDS (no content in last 48hrs):')
+    for feed_info in stale_feeds:
+        print(f'  - {feed_info["name"]}')
 
-# Generate cleaned feeds.txt
-print('\n' + '=' * 70)
-print('GENERATING CLEANED feeds.txt')
-print('=' * 70)
+# Show timeout feeds
+if timeout_feeds:
+    print('\n⏱️  TIMEOUT FEEDS:')
+    for feed_info in timeout_feeds:
+        print(f'  - {feed_info["name"]}')
 
-cleaned_content = '# Financial News RSS Feeds - Auto-cleaned\n'
-cleaned_content += '# Format: Source Name|Feed URL\n'
-cleaned_content += '# Generated: ' + datetime.now().strftime('%Y-%m-%d %H:%M') + '\n'
-cleaned_content += '# Working feeds only\n\n'
+# ============================================
+# GENERATE CLEANED FEEDS FILE
+# ============================================
+print('\n' + '=' * 60)
+print('GENERATING CLEANED FEEDS FILE')
+print('=' * 60)
 
-# Group by publication
-by_pub = {}
-for source, url in working_feeds:
-    pub = source.split(' ')[0] if ' ' in source else source
-    if pub not in by_pub:
-        by_pub[pub] = []
-    by_pub[pub].append((source, url))
+# Group working feeds by publication
+from collections import defaultdict
+by_publication = defaultdict(list)
 
-for pub in sorted(by_pub.keys()):
-    cleaned_content += f'# {pub} ({len(by_pub[pub])} feeds)\n'
-    for source, url in by_pub[pub]:
-        cleaned_content += f'{source}|{url}\n'
-    cleaned_content += '\n'
+for feed_info in working_feeds:
+    by_publication[feed_info['acronym']].append(feed_info)
 
-# Save cleaned version
-with open('feeds_cleaned.txt', 'w') as f:
-    f.write(cleaned_content)
+# Write cleaned feeds file
+try:
+    with open('feeds_cleaned.txt', 'w') as f:
+        f.write('# Working RSS Feeds (Auto-Generated)\n')
+        f.write(f'# Validated: {datetime.now().strftime("%Y-%m-%d %H:%M")}\n')
+        f.write(f'# Total: {len(working_feeds)} working feeds\n\n')
+        
+        for pub in sorted(by_publication.keys()):
+            feeds_list = by_publication[pub]
+            f.write(f'# {pub} - {len(feeds_list)} feeds\n')
+            
+            for feed_info in sorted(feeds_list, key=lambda x: x['name']):
+                f.write(f'{feed_info["name"]}|{feed_info["acronym"]}|{feed_info["url"]}\n')
+            
+            f.write('\n')
+    
+    print(f'✅ Generated feeds_cleaned.txt with {len(working_feeds)} working feeds')
+    print('   Download this file and replace your feeds.txt with it')
+    
+except Exception as e:
+    print(f'❌ Error writing cleaned feeds: {str(e)}')
 
-print(f'\n✅ Cleaned feeds saved to: feeds_cleaned.txt')
-print(f'   {len(working_feeds)} working feeds')
-print(f'   {len(broken_feeds) + len(slow_feeds)} broken/slow feeds removed')
-
-print('\n' + '=' * 70)
-print('NEXT STEPS:')
-print('=' * 70)
-print('1. Review feeds_cleaned.txt')
-print('2. If satisfied, replace feeds.txt:')
-print('   mv feeds_cleaned.txt feeds.txt')
-print('3. Commit and push to GitHub')
-print('=' * 70)
+print('\n' + '=' * 60)
+print('Feed validation complete!')
+print('=' * 60)
