@@ -12,6 +12,12 @@ BS Insurance|BS|https://www.business-standard.com/rss/finance-bs-insurance-103.r
 BS Finance|BS|https://www.business-standard.com/rss/finance-news-101.rss
 BS Technology|BS|https://www.business-standard.com/rss/technology-108.rss
 BS Opinion|BS|https://www.business-standard.com/rss/opinion-103.rss
+BS Latest|BS|https://www.business-standard.com/rss/latest-news-100.rss
+BS Markets|BS|https://www.business-standard.com/rss/markets-101.rss
+BS Economy|BS|https://www.business-standard.com/rss/economy-102.rss
+BS Technology|BS|https://www.business-standard.com/rss/technology-103.rss
+BS World|BS|https://www.business-standard.com/rss/world-news-105.rss
+
 
 # Economic Times - 6 feeds
 ET Markets|ET|https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms
