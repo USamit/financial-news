@@ -2,33 +2,16 @@ name: Daily Financial News
 
 on:
   schedule:
-    - cron: '30 1 * * *'
+    - cron: '0 1 * * *'  # 1 AM UTC daily
   workflow_dispatch:
 
 jobs:
   send-news:
     runs-on: ubuntu-latest
+    
     steps:
-      - uses: actions/checkout@v3
-      
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-      
-      - name: Install dependencies
-        run: pip install feedparser requests python-dateutil
-      
-      - name: Run aggregator
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python telegram_aggregator.py
-
-  test-feeds:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
       
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -37,7 +20,33 @@ jobs:
       
       - name: Install dependencies
         run: |
-          pip install feedparser --break-system-packages
+          pip install feedparser requests --break-system-packages
       
-      - name: Test RSS feeds
-        run: python test_feeds.py
+      # STEP 1: Validate feeds and update feeds.txt
+      - name: Validate and update feeds
+        run: |
+          echo "======================================"
+          echo "STEP 1: VALIDATING FEEDS"
+          echo "======================================"
+          python validate_and_update_feeds.py
+      
+      # STEP 2: Run main aggregator with validated feeds
+      - name: Run news aggregator
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          echo "======================================"
+          echo "STEP 2: RUNNING NEWS AGGREGATOR"
+          echo "======================================"
+          python telegram_aggregator.py
+      
+      # Optional: Commit updated feeds.txt back to repo
+      - name: Commit updated feeds.txt
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add feeds.txt
+          git diff --quiet && git diff --staged --quiet || git commit -m "Auto-update feeds.txt [skip ci]"
+          git push
+        continue-on-error: true
