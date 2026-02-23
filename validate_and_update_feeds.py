@@ -6,83 +6,89 @@ import requests
 from bs4 import BeautifulSoup
 import time
 
-# Set timeout
-socket.setdefaulttimeout(15)  # Longer timeout
+socket.setdefaulttimeout(10)
 
 print('=' * 60)
-print('RSS Feed Auto-Validator & Discovery')
-print('Intelligent feed validation with auto-discovery')
+print('Active Feed Discovery & Validation')
+print('Finding the most active, freshest feeds')
 print('=' * 60)
 
 # ============================================
-# PUBLICATION DISCOVERY CONFIGS
+# DISCOVERY PATTERNS
 # ============================================
-DISCOVERY_CONFIGS = {
+DISCOVERY_PATTERNS = {
     'BS': {
         'name': 'Business Standard',
-        'base_url': 'https://www.business-standard.com',
-        'rss_page': 'https://www.business-standard.com/rss-feeds',
-        'common_patterns': [
-            'https://www.business-standard.com/rss/{}.rss',
-            'https://www.business-standard.com/rss/news-{}.rss',
-            'https://www.business-standard.com/rss/category-{}.rss',
+        'patterns': [
+            'https://www.business-standard.com/rss/latest.rss',
+            'https://www.business-standard.com/rss/home.rss',
+            'https://www.business-standard.com/rss/markets.rss',
+            'https://www.business-standard.com/rss/finance.rss',
+            'https://www.business-standard.com/rss/economy.rss',
+            'https://www.business-standard.com/rss/companies.rss',
+            'https://www.business-standard.com/rss/banking.rss',
+            'https://www.business-standard.com/rss/technology.rss',
+            'https://www.business-standard.com/rss/insurance.rss',
         ]
     },
     'ET': {
         'name': 'Economic Times',
-        'base_url': 'https://economictimes.indiatimes.com',
-        'rss_page': 'https://economictimes.indiatimes.com/rss.cms',
-        'common_patterns': [
-            'https://economictimes.indiatimes.com/rssfeeds/{}.cms',
-            'https://economictimes.indiatimes.com/{}/rssfeeds/{}.cms',
+        'patterns': [
+            'https://economictimes.indiatimes.com/rssfeedstopstories.cms',
+            'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms',
+            'https://economictimes.indiatimes.com/industry/banking/finance/rssfeeds/13358259.cms',
+            'https://economictimes.indiatimes.com/news/economy/rssfeeds/1373380680.cms',
         ]
     },
     'FT': {
         'name': 'Financial Times',
-        'base_url': 'https://www.ft.com',
-        'common_patterns': [
-            'https://www.ft.com/{}?format=rss',
-            'https://www.ft.com/rss/{}',
+        'patterns': [
+            'https://www.ft.com/?format=rss',
+            'https://www.ft.com/companies?format=rss',
+            'https://www.ft.com/markets?format=rss',
+            'https://www.ft.com/world/economy?format=rss',
         ]
     },
     'Mint': {
         'name': 'LiveMint',
-        'base_url': 'https://www.livemint.com',
-        'rss_page': 'https://www.livemint.com/rss',
-        'common_patterns': [
-            'https://www.livemint.com/rss/{}',
+        'patterns': [
+            'https://www.livemint.com/rss/homepage',
+            'https://www.livemint.com/rss/markets',
+            'https://www.livemint.com/rss/money',
+            'https://www.livemint.com/rss/companies',
+            'https://www.livemint.com/rss/economy',
         ]
     },
     'NYT': {
         'name': 'New York Times',
-        'base_url': 'https://www.nytimes.com',
-        'common_patterns': [
-            'https://rss.nytimes.com/services/xml/rss/nyt/{}.xml',
+        'patterns': [
+            'https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml',
+            'https://rss.nytimes.com/services/xml/rss/nyt/Business.xml',
+            'https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml',
         ]
     },
     'WSJ': {
         'name': 'Wall Street Journal',
-        'base_url': 'https://www.wsj.com',
-        'common_patterns': [
-            'https://feeds.content.dowjones.io/public/rss/{}',
+        'patterns': [
+            'https://feeds.content.dowjones.io/public/rss/RSSMarketsMain',
+            'https://feeds.content.dowjones.io/public/rss/WSJcomUSBusiness',
         ]
     },
     'MC': {
         'name': 'MoneyControl',
-        'base_url': 'https://www.moneycontrol.com',
-        'common_patterns': [
-            'https://www.moneycontrol.com/rss/{}.xml',
+        'patterns': [
+            'https://www.moneycontrol.com/rss/latestnews.xml',
+            'https://www.moneycontrol.com/rss/business.xml',
+            'https://www.moneycontrol.com/rss/marketreports.xml',
         ]
     }
 }
 
 # ============================================
-# LOAD MASTER FEED LIST
+# LOAD MASTER FEEDS
 # ============================================
 def load_master_feeds():
-    """Load all feeds from feeds_master.txt"""
     feeds = []
-    
     try:
         with open('feeds_master.txt', 'r') as f:
             for line in f:
@@ -92,311 +98,249 @@ def load_master_feeds():
                 
                 if '|' in line:
                     parts = line.split('|')
-                    
                     if len(parts) == 3:
-                        feed_name = parts[0].strip()
-                        acronym = parts[1].strip()
-                        url = parts[2].strip()
                         feeds.append({
-                            'name': feed_name,
-                            'acronym': acronym,
-                            'url': url
+                            'name': parts[0].strip(),
+                            'acronym': parts[1].strip(),
+                            'url': parts[2].strip()
                         })
-        
         return feeds
-    except FileNotFoundError:
-        print('ERROR: feeds_master.txt not found!')
-        return []
-    except Exception as e:
-        print(f'ERROR loading feeds_master.txt: {str(e)}')
+    except:
         return []
 
 # ============================================
-# SMART FEED VALIDATION (WITH RETRIES)
+# STRICT VALIDATION (ONLY FRESH FEEDS)
 # ============================================
-def validate_feed_smart(feed_info, max_retries=2):
+def is_feed_active(url, min_recent=3, hours=48):
     """
-    Validate feed with retries and lenient criteria
-    Returns: (status, message, entry_count)
+    Strictly validate if feed is ACTIVE
+    Returns: (is_active, recent_count, total_count, freshest_age_hours)
     """
-    
-    for attempt in range(max_retries):
-        try:
-            # Add headers to mimic browser
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            }
-            
-            # Parse feed with timeout
-            feed = feedparser.parse(feed_info['url'], request_headers=headers)
-            
-            if not feed.entries:
-                if attempt < max_retries - 1:
-                    time.sleep(2)  # Wait before retry
-                    continue
-                return 'broken', '0 entries', 0
-            
-            # More lenient: Accept feeds with content from last 7 days (not 72 hours)
-            recent_count = 0
-            for entry in feed.entries[:30]:  # Check more entries
-                try:
-                    if hasattr(entry, 'published_parsed') and entry.published_parsed:
-                        pub_date = datetime(*entry.published_parsed[:6])
-                        if (datetime.now() - pub_date) <= timedelta(days=7):
-                            recent_count += 1
-                except:
-                    pass
-            
-            total_entries = len(feed.entries)
-            
-            # More lenient: Accept if ANY content exists, even if old
-            if total_entries == 0:
-                return 'broken', '0 entries', 0
-            elif recent_count == 0 and total_entries > 0:
-                # Has entries but old - still accept (some feeds update weekly)
-                return 'working', f'{total_entries} entries (stale but valid)', total_entries
-            else:
-                return 'working', f'{total_entries} entries, {recent_count} recent (7d)', total_entries
-            
-        except socket.timeout:
-            if attempt < max_retries - 1:
-                time.sleep(2)
-                continue
-            return 'timeout', 'Timeout after retries', 0
-        except Exception as e:
-            if attempt < max_retries - 1:
-                time.sleep(2)
-                continue
-            return 'broken', str(e)[:50], 0
-    
-    return 'broken', 'Failed after retries', 0
+    try:
+        feed = feedparser.parse(url, request_headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        })
+        
+        if not feed.entries or len(feed.entries) < 5:
+            return False, 0, 0, 999
+        
+        # Count RECENT articles (last 48 hours)
+        recent_count = 0
+        freshest_age = 999
+        
+        for entry in feed.entries[:50]:
+            try:
+                if hasattr(entry, 'published_parsed') and entry.published_parsed:
+                    pub_date = datetime(*entry.published_parsed[:6])
+                    age_hours = (datetime.now() - pub_date).total_seconds() / 3600
+                    
+                    if age_hours < hours:
+                        recent_count += 1
+                    
+                    if age_hours < freshest_age:
+                        freshest_age = age_hours
+            except:
+                pass
+        
+        # Must have at least min_recent articles from last 48 hours
+        is_active = recent_count >= min_recent
+        
+        return is_active, recent_count, len(feed.entries), freshest_age
+        
+    except:
+        return False, 0, 0, 999
 
 # ============================================
-# DISCOVER RSS FEEDS FROM WEBSITE
+# DISCOVER ACTIVE FEEDS
 # ============================================
-def discover_feeds_from_website(pub_acronym):
+def discover_active_feeds(pub_acronym):
     """
-    Discover RSS feeds by scraping publication's website
-    Returns list of discovered feed URLs
+    Discover and test feeds for a publication
+    Returns only ACTIVE feeds
     """
     
-    if pub_acronym not in DISCOVERY_CONFIGS:
+    if pub_acronym not in DISCOVERY_PATTERNS:
         return []
     
-    config = DISCOVERY_CONFIGS[pub_acronym]
+    config = DISCOVERY_PATTERNS[pub_acronym]
+    print(f'  🔍 Discovering active feeds for {config["name"]}...')
+    
     discovered = []
     
-    print(f'  🔍 Discovering feeds from {config["name"]} website...')
-    
-    # Method 1: Scrape RSS page if available
-    if 'rss_page' in config:
-        try:
-            response = requests.get(config['rss_page'], timeout=10, headers={
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    # Test predefined patterns
+    for url in config['patterns']:
+        is_active, recent, total, age = is_feed_active(url)
+        
+        if is_active:
+            # Generate name from URL
+            feed_name = url.split('/')[-1].replace('.rss', '').replace('.xml', '').replace('.cms', '')
+            feed_name = feed_name.replace('-', ' ').replace('_', ' ').title()
+            feed_name = f'{pub_acronym} {feed_name}'
+            
+            discovered.append({
+                'name': feed_name,
+                'acronym': pub_acronym,
+                'url': url,
+                'recent': recent,
+                'total': total,
+                'age': age
             })
             
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.text, 'html.parser')
-                
-                # Find RSS links
-                for link in soup.find_all('a', href=True):
-                    href = link['href']
-                    if 'rss' in href.lower() or '.xml' in href.lower():
-                        # Make absolute URL
-                        if href.startswith('http'):
-                            discovered.append(href)
-                        elif href.startswith('/'):
-                            discovered.append(config['base_url'] + href)
-                
-                # Find <link rel="alternate"> tags
-                for link in soup.find_all('link', type='application/rss+xml'):
-                    if 'href' in link.attrs:
-                        href = link['href']
-                        if href.startswith('http'):
-                            discovered.append(href)
-                        elif href.startswith('/'):
-                            discovered.append(config['base_url'] + href)
-        except Exception as e:
-            print(f'    ⚠️  Error scraping RSS page: {str(e)[:50]}')
+            print(f'    ✅ {feed_name}: {recent} recent articles ({age:.1f}h ago)')
     
-    # Method 2: Try common patterns
-    if 'common_patterns' in config:
-        common_sections = ['business', 'markets', 'economy', 'companies', 'banking', 
-                          'finance', 'news', 'technology', 'opinion', 'latest']
+    # Try to scrape homepage for RSS links
+    try:
+        base_url = config.get('base_url', f'https://www.{pub_acronym.lower()}.com')
+        response = requests.get(base_url, timeout=5, headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        })
         
-        for pattern in config['common_patterns']:
-            for section in common_sections:
-                try:
-                    url = pattern.format(section)
-                    discovered.append(url)
-                except:
-                    pass
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Find RSS links in HTML
+            for link in soup.find_all('link', type='application/rss+xml'):
+                if 'href' in link.attrs:
+                    url = link['href']
+                    if not url.startswith('http'):
+                        url = base_url + url
+                    
+                    # Test if active
+                    is_active, recent, total, age = is_feed_active(url)
+                    
+                    if is_active and url not in [f['url'] for f in discovered]:
+                        feed_name = link.get('title', 'RSS Feed')
+                        feed_name = f'{pub_acronym} {feed_name}'
+                        
+                        discovered.append({
+                            'name': feed_name,
+                            'acronym': pub_acronym,
+                            'url': url,
+                            'recent': recent,
+                            'total': total,
+                            'age': age
+                        })
+                        
+                        print(f'    ✅ {feed_name}: {recent} recent articles ({age:.1f}h ago)')
+    except:
+        pass
     
-    # Remove duplicates
-    discovered = list(set(discovered))
-    
-    print(f'    Found {len(discovered)} potential feed URLs')
-    
+    print(f'    Found {len(discovered)} ACTIVE feeds')
     return discovered
-
-# ============================================
-# TEST DISCOVERED FEEDS
-# ============================================
-def test_discovered_feeds(discovered_urls, pub_acronym, pub_name):
-    """
-    Test discovered feeds and return working ones
-    """
-    
-    if not discovered_urls:
-        return []
-    
-    print(f'  🧪 Testing {len(discovered_urls)} discovered feeds...')
-    
-    working = []
-    tested = 0
-    
-    for url in discovered_urls[:20]:  # Limit to 20 to save time
-        tested += 1
-        
-        try:
-            feed = feedparser.parse(url, request_headers={
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            })
-            
-            if feed.entries and len(feed.entries) >= 5:  # At least 5 entries
-                # Extract feed name from URL or title
-                feed_title = feed.feed.get('title', '') if hasattr(feed, 'feed') else ''
-                
-                if not feed_title:
-                    # Generate name from URL
-                    feed_title = url.split('/')[-1].replace('.rss', '').replace('.xml', '').replace('-', ' ').title()
-                
-                feed_name = f'{pub_acronym} {feed_title}'
-                
-                working.append({
-                    'name': feed_name,
-                    'acronym': pub_acronym,
-                    'url': url,
-                    'entries': len(feed.entries)
-                })
-                
-                print(f'    ✅ Found: {feed_name} ({len(feed.entries)} entries)')
-        except:
-            pass
-    
-    print(f'    Result: {len(working)} working feeds from {tested} tested')
-    
-    return working
 
 # ============================================
 # MAIN VALIDATION
 # ============================================
 master_feeds = load_master_feeds()
 
-if not master_feeds:
-    print('No feeds loaded!')
-    exit(1)
-
-print(f'\nTesting {len(master_feeds)} feeds from feeds_master.txt\n')
+print(f'\nPhase 1: Testing {len(master_feeds)} feeds from feeds_master.txt')
+print('Criteria: Must have 3+ articles from last 48 hours\n')
 
 working_feeds = []
-broken_feeds = []
-
-# Track by publication
 by_publication = defaultdict(list)
 
 for i, feed_info in enumerate(master_feeds, 1):
     print(f'[{i}/{len(master_feeds)}] {feed_info["name"]}')
     
-    status, message, entry_count = validate_feed_smart(feed_info)
+    is_active, recent, total, age = is_feed_active(feed_info['url'])
     
-    if status == 'working':
-        print(f'  ✅ {message}')
+    if is_active:
+        print(f'  ✅ Active: {recent} recent articles ({age:.1f}h ago)')
+        feed_info['recent'] = recent
+        feed_info['age'] = age
         working_feeds.append(feed_info)
         by_publication[feed_info['acronym']].append(feed_info)
     else:
-        print(f'  ❌ {status.upper()}: {message}')
-        broken_feeds.append(feed_info)
-
-# ============================================
-# AUTO-DISCOVERY FOR PUBLICATIONS WITH 0 FEEDS
-# ============================================
-print('\n' + '=' * 60)
-print('AUTO-DISCOVERY FOR PUBLICATIONS WITH NO WORKING FEEDS')
-print('=' * 60)
-
-for pub_acronym, config in DISCOVERY_CONFIGS.items():
-    if pub_acronym not in by_publication or len(by_publication[pub_acronym]) == 0:
-        print(f'\n❌ {config["name"]} ({pub_acronym}): 0 working feeds')
-        print(f'   Attempting auto-discovery...')
-        
-        # Discover feeds
-        discovered_urls = discover_feeds_from_website(pub_acronym)
-        
-        if discovered_urls:
-            # Test discovered feeds
-            new_working_feeds = test_discovered_feeds(discovered_urls, pub_acronym, config['name'])
-            
-            if new_working_feeds:
-                print(f'   ✅ Auto-discovered {len(new_working_feeds)} working feeds!')
-                working_feeds.extend(new_working_feeds)
-                by_publication[pub_acronym].extend(new_working_feeds)
-            else:
-                print(f'   ⚠️  No working feeds found in discovery')
+        if total == 0:
+            print(f'  ❌ Broken: 0 entries')
+        elif recent == 0:
+            print(f'  ⚠️  Stale: {total} entries but 0 from last 48h (oldest: {age:.1f}h)')
         else:
-            print(f'   ⚠️  Could not discover feeds from website')
-    else:
-        print(f'✅ {config["name"]} ({pub_acronym}): {len(by_publication[pub_acronym])} working feeds')
+            print(f'  ⚠️  Inactive: Only {recent} recent articles (need 3+)')
 
 # ============================================
-# SUMMARY
+# AUTO-DISCOVERY FOR WEAK PUBLICATIONS
 # ============================================
 print('\n' + '=' * 60)
-print('VALIDATION SUMMARY')
-print('=' * 60)
-print(f'Total feeds tested: {len(master_feeds)}')
-print(f'✅ Working from master: {len(working_feeds) - sum(len(feeds) for feeds in by_publication.values() if feeds[0].get("entries"))}')
-print(f'🔍 Auto-discovered: {sum(1 for f in working_feeds if "entries" in f)}')
-print(f'❌ Broken/Timeout: {len(broken_feeds)}')
-print(f'\n📝 Total feeds for feeds.txt: {len(working_feeds)}')
+print('Phase 2: Auto-Discovery for Publications with <3 Active Feeds')
 print('=' * 60)
 
-# Show publication breakdown
-print('\n📊 BY PUBLICATION:')
+MIN_FEEDS_PER_PUB = 3
+
+for pub_acronym, config in DISCOVERY_PATTERNS.items():
+    current_count = len(by_publication.get(pub_acronym, []))
+    
+    if current_count < MIN_FEEDS_PER_PUB:
+        print(f'\n⚠️  {config["name"]} ({pub_acronym}): Only {current_count} active feeds')
+        print(f'   Target: {MIN_FEEDS_PER_PUB} feeds - discovering alternatives...')
+        
+        discovered = discover_active_feeds(pub_acronym)
+        
+        # Add discovered feeds (avoid duplicates)
+        existing_urls = {f['url'] for f in by_publication[pub_acronym]}
+        
+        for feed_info in discovered:
+            if feed_info['url'] not in existing_urls:
+                working_feeds.append(feed_info)
+                by_publication[pub_acronym].append(feed_info)
+        
+        new_count = len(by_publication[pub_acronym])
+        print(f'   ✅ Now has {new_count} active feeds (+{new_count - current_count} discovered)')
+
+# ============================================
+# FINAL SUMMARY
+# ============================================
+print('\n' + '=' * 60)
+print('FINAL SUMMARY')
+print('=' * 60)
+
+total_active = sum(len(feeds) for feeds in by_publication.values())
+
+print(f'Total ACTIVE feeds: {total_active}')
+print(f'Publications covered: {len(by_publication)}')
+print(f'\n📊 BY PUBLICATION:')
+
 for pub in sorted(by_publication.keys()):
-    print(f'  {pub}: {len(by_publication[pub])} feeds')
+    feeds = by_publication[pub]
+    avg_recent = sum(f.get('recent', 0) for f in feeds) / len(feeds) if feeds else 0
+    avg_age = sum(f.get('age', 0) for f in feeds) / len(feeds) if feeds else 0
+    
+    print(f'  {pub}: {len(feeds)} feeds (avg {avg_recent:.1f} recent, {avg_age:.1f}h old)')
 
 # ============================================
-# GENERATE feeds.txt
+# GENERATE feeds.txt (ACTIVE FEEDS ONLY)
 # ============================================
 print('\n' + '=' * 60)
-print('UPDATING feeds.txt')
+print('GENERATING feeds.txt with ACTIVE feeds only')
 print('=' * 60)
 
 try:
     with open('feeds.txt', 'w') as f:
-        f.write('# AUTO-GENERATED - DO NOT EDIT MANUALLY\n')
-        f.write('# Edit feeds_master.txt instead\n')
+        f.write('# AUTO-GENERATED ACTIVE FEEDS\n')
+        f.write('# Only includes feeds with 3+ articles from last 48 hours\n')
         f.write(f'# Last validated: {datetime.now().strftime("%Y-%m-%d %H:%M UTC")}\n')
-        f.write(f'# Working feeds: {len(working_feeds)} ({len(master_feeds)} in master)\n')
-        f.write('# Format: Feed Name|Acronym|URL\n\n')
+        f.write(f'# Active feeds: {total_active}\n\n')
         
         for pub in sorted(by_publication.keys()):
             feeds_list = by_publication[pub]
-            f.write(f'# {pub} - {len(feeds_list)} feeds\n')
             
-            for feed_info in sorted(feeds_list, key=lambda x: x['name']):
+            # Sort by freshness (most recent first)
+            feeds_list.sort(key=lambda x: x.get('age', 999))
+            
+            f.write(f'# {pub} - {len(feeds_list)} active feeds\n')
+            
+            for feed_info in feeds_list:
                 f.write(f'{feed_info["name"]}|{feed_info["acronym"]}|{feed_info["url"]}\n')
             
             f.write('\n')
     
-    print(f'✅ Updated feeds.txt with {len(working_feeds)} working feeds')
-    print(f'   ({len(master_feeds)} from master + auto-discovered)')
+    print(f'✅ Generated feeds.txt with {total_active} ACTIVE feeds')
+    print('   All feeds have fresh content from last 48 hours')
     
 except Exception as e:
-    print(f'❌ Error writing feeds.txt: {str(e)}')
+    print(f'❌ Error: {str(e)}')
     exit(1)
 
 print('\n' + '=' * 60)
-print('✅ Feed validation & discovery complete!')
+print('✅ Active feed discovery complete!')
 print('=' * 60)
