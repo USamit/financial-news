@@ -332,7 +332,9 @@ for feed_name, feed_info in feeds.items():
         print('\n' + feed_name + ':')
         
         try:
-            feed = feedparser.parse(url)
+            feed = feedparser.parse(url, request_headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            })
         except socket.timeout:
             print('  ⏱️  TIMEOUT - Skipping')
             feed_stats[feed_name] = {'total': 0, 'recent': 0, 'relevant': 0}
