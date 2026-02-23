@@ -57,7 +57,7 @@ def load_master_feeds():
 # ============================================
 # VALIDATE WITH KEYWORDS (MATCHES MAIN CODE)
 # ============================================
-def is_feed_active_and_relevant(url, keywords, min_relevant=3, hours=48):
+def is_feed_active_and_relevant(url, keywords, min_relevant=3, hours=24):
     """
     Validate feed matches EXACTLY what main aggregator needs:
     1. Has recent entries (last 48 hours)
