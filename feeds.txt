@@ -85,3 +85,14 @@ WSJ Lifestyle|WSJ|https://feeds.content.dowjones.io/public/rss/RSSLifestyle
 MC Latest News|MC|https://www.moneycontrol.com/rss/latestnews.xml
 MC Business|MC|https://www.moneycontrol.com/rss/business.xml
 MC Market|MC|https://www.moneycontrol.com/rss/marketreports.xml
+
+#Barron's
+Barron's Top Stories|Barrons|https://www.barrons.com/feed/rss
+Barron's Markets|Barrons|https://www.barrons.com/topics/markets/feed/rss
+Barron's Economy & Policy|Barrons|https://www.barrons.com/topics/economy-and-policy/feed/rss
+Barron's Technology|Barrons|https://www.barrons.com/topics/technology/feed/rss
+Barron's Cryptocurrencies|Barrons|https://www.barrons.com/topics/cryptocurrencies/feed/rss
+Barron's Magazine|Barrons|https://www.barrons.com/magazine/feed/rss
+Barron's Live Podcast|Barrons|https://video-api.barrons.com/podcast/rss/barrons/barrons-live
+Barron's Numbers Podcast|Barrons|https://video-api.barrons.com/podcast/rss/barrons/numbers-by-barrons
+
