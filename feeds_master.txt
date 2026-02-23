@@ -1,0 +1,81 @@
+# MASTER FEED LIST - Source of Truth
+# Add/remove feeds here - validation happens automatically
+# Format: Feed Name|Acronym|URL
+
+# Business Standard
+BS Banking|BS|https://www.business-standard.com/rss/finance-bs-banking-finance-101.rss
+BS Markets|BS|https://www.business-standard.com/rss/markets-106.rss
+BS Economy|BS|https://www.business-standard.com/rss/economy-policy-102.rss
+BS Companies|BS|https://www.business-standard.com/rss/companies-101.rss
+BS Insurance|BS|https://www.business-standard.com/rss/finance-bs-insurance-103.rss
+BS Finance|BS|https://www.business-standard.com/rss/finance-news-101.rss
+BS Technology|BS|https://www.business-standard.com/rss/technology-108.rss
+BS Opinion|BS|https://www.business-standard.com/rss/opinion-103.rss
+BS Latest|BS|https://www.business-standard.com/rss/latest-news-100.rss
+
+# Economic Times
+ET Markets|ET|https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms
+ET Finance|ET|https://economictimes.indiatimes.com/industry/banking/finance/rssfeeds/13358259.cms
+ET Stocks|ET|https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms
+ET Economy|ET|https://economictimes.indiatimes.com/news/economy/rssfeeds/1373380680.cms
+ET Wealth|ET|https://economictimes.indiatimes.com/wealth/rssfeeds/837555174.cms
+ET Tech|ET|https://economictimes.indiatimes.com/tech/rssfeeds/13357270.cms
+
+# Financial Times
+FT Markets|FT|https://www.ft.com/markets?format=rss
+FT Banking|FT|https://www.ft.com/companies/financials?format=rss
+FT Economy|FT|https://www.ft.com/world/economy?format=rss
+FT Companies|FT|https://www.ft.com/companies?format=rss
+FT India|FT|https://www.ft.com/india?format=rss
+FT Asia|FT|https://www.ft.com/markets/asia-pacific?format=rss
+FT Technology|FT|https://www.ft.com/technology?format=rss
+FT Equities|FT|https://www.ft.com/equities?format=rss
+FT Currencies|FT|https://www.ft.com/currencies?format=rss
+FT Commodities|FT|https://www.ft.com/commodities?format=rss
+FT Opinion|FT|https://www.ft.com/opinion?format=rss
+FT Lex|FT|https://www.ft.com/lex?format=rss
+FT UK|FT|https://www.ft.com/world/uk?format=rss
+FT US|FT|https://www.ft.com/world/us?format=rss
+FT Climate|FT|https://www.ft.com/climate-capital?format=rss
+FT Crypto|FT|https://www.ft.com/cryptocurrencies?format=rss
+FT Energy|FT|https://www.ft.com/energy?format=rss
+
+# Mint
+Mint Markets|Mint|https://www.livemint.com/rss/markets
+Mint Money|Mint|https://www.livemint.com/rss/money
+Mint Companies|Mint|https://www.livemint.com/rss/companies
+Mint Technology|Mint|https://www.livemint.com/rss/technology
+Mint Industry|Mint|https://www.livemint.com/rss/industry
+Mint Opinion|Mint|https://www.livemint.com/rss/opinion
+Mint Politics|Mint|https://www.livemint.com/rss/politics
+Mint Budget|Mint|https://www.livemint.com/rss/budget
+Mint Elections|Mint|https://www.livemint.com/rss/elections
+Mint Economy|Mint|https://www.livemint.com/rss/economy
+Mint Education|Mint|https://www.livemint.com/rss/education
+Mint Sports|Mint|https://www.livemint.com/rss/sports
+Mint Latest|Mint|https://www.livemint.com/rss/latest-news
+
+# New York Times
+NYT Business|NYT|https://rss.nytimes.com/services/xml/rss/nyt/Business.xml
+NYT Economy|NYT|https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml
+NYT DealBook|NYT|https://rss.nytimes.com/services/xml/rss/nyt/DealBook.xml
+NYT Your Money|NYT|https://rss.nytimes.com/services/xml/rss/nyt/YourMoney.xml
+NYT Technology|NYT|https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml
+NYT Small Business|NYT|https://rss.nytimes.com/services/xml/rss/nyt/SmallBusiness.xml
+NYT World|NYT|https://rss.nytimes.com/services/xml/rss/nyt/World.xml
+NYT Politics|NYT|https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml
+NYT Science|NYT|https://rss.nytimes.com/services/xml/rss/nyt/Science.xml
+NYT Health|NYT|https://rss.nytimes.com/services/xml/rss/nyt/Health.xml
+NYT Climate|NYT|https://rss.nytimes.com/services/xml/rss/nyt/Climate.xml
+
+# Wall Street Journal
+WSJ Markets|WSJ|https://feeds.content.dowjones.io/public/rss/RSSMarketsMain
+WSJ Business|WSJ|https://feeds.content.dowjones.io/public/rss/WSJcomUSBusiness
+WSJ World|WSJ|https://feeds.content.dowjones.io/public/rss/RSSWorldNews
+WSJ Tech|WSJ|https://feeds.content.dowjones.io/public/rss/RSSWSJD
+WSJ Lifestyle|WSJ|https://feeds.content.dowjones.io/public/rss/RSSLifestyle
+
+# MoneyControl
+MC Latest News|MC|https://www.moneycontrol.com/rss/latestnews.xml
+MC Business|MC|https://www.moneycontrol.com/rss/business.xml
+MC Market|MC|https://www.moneycontrol.com/rss/marketreports.xml
