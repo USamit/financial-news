@@ -20,7 +20,7 @@ jobs:
       
       - name: Install dependencies
         run: |
-          pip install feedparser requests --break-system-packages
+          pip install feedparser requests beautifulsoup4 --break-system-packages
       
       # STEP 1: Validate feeds and update feeds.txt
       - name: Validate and update feeds
