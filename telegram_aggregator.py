@@ -2,8 +2,9 @@ import os
 from datetime import datetime, timedelta
 import feedparser
 import requests
-from collections import defaultdict
+from collections import defaultdict, Counter
 import socket
+import re
 
 # Set global timeout for all network operations
 socket.setdefaulttimeout(10)
@@ -18,9 +19,8 @@ print('=' * 60)
 # ============================================
 # CONFIGURATION
 # ============================================
-MIN_ARTICLES_FOR_TRENDING = 50  # Don't run trending on small batches
-MAX_TRENDING_TOPICS = 5  # Show top 5 trending topics
-SIMILARITY_THRESHOLD = 0.6  # Aggressive deduplication (0.6 = 60% similar)
+MIN_ARTICLES_FOR_TRENDING = 50
+MAX_TRENDING_TOPICS = 5
 
 # ============================================
 # LOAD RECIPIENTS from recipients.txt
@@ -86,7 +86,6 @@ def load_feeds():
                 if not line or line.startswith('#'):
                     continue
                 
-                # Expected format: Feed Name|Acronym|URL
                 if '|' in line:
                     parts = line.split('|')
                     
@@ -104,10 +103,8 @@ def load_feeds():
         print('✓ Loaded ' + str(len(feeds)) + ' RSS feeds')
         return feeds
     except FileNotFoundError:
-        print('⚠ feeds.txt not found - using minimal defaults')
-        return {
-            'ET Markets': {'url': 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms', 'acronym': 'ET'}
-        }
+        print('⚠ feeds.txt not found')
+        return {}
     except Exception as e:
         print('⚠ Error loading feeds: ' + str(e))
         return {}
@@ -151,72 +148,81 @@ def load_topics():
         return [{'name': 'OTHER NEWS', 'keywords': ['other', 'news']}]
 
 # ============================================
-# ESCAPE MARKDOWN FOR LINK TITLES (MINIMAL)
+# ESCAPE MARKDOWN
 # ============================================
 def escape_markdown_title(text):
-    """
-    Escape only characters that break Telegram Markdown in link titles
-    Only need to escape: ] and \
-    """
-    text = text.replace('\\', '\\\\')  # Escape backslashes first
-    text = text.replace(']', '\\]')    # Escape closing brackets
+    """Escape only ] and \ for Telegram Markdown"""
+    text = text.replace('\\', '\\\\')
+    text = text.replace(']', '\\]')
     return text
 
 # ============================================
-# DETECT SIMILAR ARTICLES (DEDUPLICATION)
+# ADVANCED DEDUPLICATION
 # ============================================
-def are_articles_similar(title1, title2, threshold=0.6):
+def extract_key_phrases(title):
     """
-    Check if two article titles are similar (likely same story)
-    Returns True if similarity > threshold
+    Extract key phrases from title for better duplicate detection
+    Returns set of important words and bigrams
     """
-    # Normalize titles
-    def normalize(text):
-        # Lowercase and remove common words
-        common_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 
-                       'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'be',
-                       'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will',
-                       'would', 'could', 'should', 'may', 'might', 'can', 'says', 'said',
-                       'after', 'amid', 'over', 'up', 'down', 'out', 'its', 'new'}
-        
-        # Split into words and clean
-        words = text.lower().replace('-', ' ').replace(':', ' ').split()
-        words = [w.strip('.,!?;()[]{}\'\"') for w in words]
-        words = [w for w in words if w and w not in common_words and len(w) > 2]
-        
-        return set(words)
+    # Stop words to ignore
+    stop_words = {
+        'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
+        'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'be',
+        'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will',
+        'would', 'could', 'should', 'may', 'might', 'can', 'says', 'said',
+        'after', 'amid', 'over', 'up', 'down', 'out', 'its', 'new', 'this',
+        'that', 'these', 'those', 'his', 'her', 'their', 'our', 'your'
+    }
     
-    words1 = normalize(title1)
-    words2 = normalize(title2)
+    # Clean and tokenize
+    text = title.lower()
+    text = re.sub(r'[^\w\s]', ' ', text)
+    words = text.split()
     
-    if not words1 or not words2:
-        return False
+    # Filter stop words and short words
+    words = [w for w in words if w not in stop_words and len(w) > 2]
     
-    # Calculate Jaccard similarity (intersection over union)
-    intersection = len(words1.intersection(words2))
-    union = len(words1.union(words2))
+    # Create bigrams (two-word phrases)
+    phrases = set(words)
+    for i in range(len(words) - 1):
+        bigram = words[i] + '_' + words[i + 1]
+        phrases.add(bigram)
     
-    if union == 0:
-        return False
-    
-    similarity = intersection / union
-    
-    return similarity >= threshold
+    return phrases
 
-def is_duplicate_article(new_article, existing_articles, threshold=0.6):
+def is_duplicate_advanced(new_article, existing_articles):
     """
-    Check if new article is similar to any existing article
+    Advanced duplicate detection using key phrase overlap
+    Returns True if article is a duplicate
     """
-    new_title = new_article['title']
+    new_phrases = extract_key_phrases(new_article['title'])
+    
+    if len(new_phrases) < 3:  # Title too short to compare
+        return False
     
     for existing in existing_articles:
-        if are_articles_similar(new_title, existing['title'], threshold):
+        existing_phrases = extract_key_phrases(existing['title'])
+        
+        if len(existing_phrases) < 3:
+            continue
+        
+        # Calculate overlap
+        common = new_phrases.intersection(existing_phrases)
+        union = new_phrases.union(existing_phrases)
+        
+        if len(union) == 0:
+            continue
+        
+        # If 50%+ phrases are the same, it's a duplicate
+        similarity = len(common) / len(union)
+        
+        if similarity >= 0.5:
             return True
     
     return False
 
 # ============================================
-# CATEGORIZE ARTICLE BY TOPIC
+# CATEGORIZE ARTICLE
 # ============================================
 def categorize_article(title, description, topics):
     """Categorize article using scoring"""
@@ -240,134 +246,114 @@ def categorize_article(title, description, topics):
     return 'OTHER NEWS'
 
 # ============================================
-# FREE TRENDING DETECTION (MINIMAL PATTERNS)
+# WORD CLOUD TRENDING DETECTION
 # ============================================
-def identify_trending_topics_free(articles, top_n=5):
+def identify_trending_wordcloud(articles, top_n=5):
     """
-    Identify trending topics by clustering articles into news themes
-    Uses minimal patterns for current events (not duplicating keywords.txt)
+    Identify trending topics using word cloud approach
+    Extract most common phrases from article titles
     """
     
-    if len(articles) < 10:
+    if len(articles) < 50:
         return []
     
-    # Get current quarter dynamically
-    current_month = datetime.now().month
-    if 1 <= current_month <= 3:
-        quarter = 'Q4'
-        quarter_patterns = ['q4', 'fourth quarter', 'results', 'earnings']
-    elif 4 <= current_month <= 6:
-        quarter = 'Q1'
-        quarter_patterns = ['q1', 'first quarter', 'results', 'earnings']
-    elif 7 <= current_month <= 9:
-        quarter = 'Q2'
-        quarter_patterns = ['q2', 'second quarter', 'results', 'earnings']
-    else:
-        quarter = 'Q3'
-        quarter_patterns = ['q3', 'third quarter', 'results', 'earnings']
+    print('  Analyzing article titles for trending phrases...')
     
-    # Minimal news theme patterns (these are EVENT THEMES, not keywords)
-    trending_themes = {
-        'Trade and Tariffs': [
-            'tariff', 'bilateral trade', 'trade deal', 'trade war', 
-            'export', 'import', 'trade agreement'
-        ],
-        quarter + ' Earnings': quarter_patterns + [
-            'profit', 'revenue', 'quarterly', 'beat estimates', 'miss estimates'
-        ],
-        'Rate Decisions': [
-            'rate cut', 'rate hike', 'repo rate', 'policy rate', 
-            'monetary policy', 'interest rate decision'
-        ],
-        'IPO and Listings': [
-            'ipo', 'listing', 'issue price', 'subscription', 
-            'grey market premium', 'allotment'
-        ],
-        'Mergers and Deals': [
-            'merger', 'acquisition', 'm&a', 'stake sale', 
-            'buyout', 'takeover'
-        ],
-        'Regulatory Actions': [
-            'sebi action', 'irdai guideline', 'rbi circular', 
-            'penalty', 'enforcement', 'investigation'
-        ],
+    # Stop words
+    stop_words = {
+        'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
+        'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'be',
+        'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will',
+        'would', 'could', 'should', 'may', 'might', 'can', 'says', 'said',
+        'after', 'amid', 'over', 'up', 'down', 'out', 'its', 'new', 'this',
+        'that', 'these', 'those'
     }
     
-    # Cluster articles by theme
-    theme_clusters = defaultdict(list)
+    # Extract all words and bigrams from titles
+    word_counter = Counter()
+    bigram_counter = Counter()
+    trigram_counter = Counter()
     
     for article in articles:
-        text = article['title'].lower()
+        title = article['title'].lower()
+        title = re.sub(r'[^\w\s]', ' ', title)
+        words = title.split()
+        words = [w for w in words if w not in stop_words and len(w) > 3]
         
-        # Find best matching theme
-        best_theme = None
-        max_matches = 0
+        # Count words
+        word_counter.update(words)
         
-        for theme_name, patterns in trending_themes.items():
-            matches = sum(1 for pattern in patterns if pattern in text)
-            if matches > max_matches:
-                max_matches = matches
-                best_theme = theme_name
+        # Count bigrams
+        for i in range(len(words) - 1):
+            bigram = words[i] + ' ' + words[i + 1]
+            bigram_counter[bigram] += 1
         
-        if best_theme and max_matches > 0:
-            theme_clusters[best_theme].append(article)
+        # Count trigrams
+        for i in range(len(words) - 2):
+            trigram = words[i] + ' ' + words[i + 1] + ' ' + words[i + 2]
+            trigram_counter[trigram] += 1
     
-    # Build trending list
-    trending = []
-    for theme_name, cluster_articles in theme_clusters.items():
-        if len(cluster_articles) >= 5:  # Minimum 5 articles to be "trending"
-            summary = generate_free_summary(theme_name, cluster_articles[:5])
+    # Find top phrases (prefer longer phrases)
+    top_phrases = []
+    
+    # Get top trigrams (3-word phrases)
+    for phrase, count in trigram_counter.most_common(20):
+        if count >= 3:  # At least 3 articles
+            top_phrases.append({'phrase': phrase, 'count': count, 'type': 'trigram'})
+    
+    # Get top bigrams (2-word phrases)
+    for phrase, count in bigram_counter.most_common(30):
+        if count >= 5:  # At least 5 articles
+            # Don't add if already part of a trigram
+            is_subset = False
+            for existing in top_phrases:
+                if phrase in existing['phrase']:
+                    is_subset = True
+                    break
+            if not is_subset:
+                top_phrases.append({'phrase': phrase, 'count': count, 'type': 'bigram'})
+    
+    # Sort by count
+    top_phrases.sort(key=lambda x: x['count'], reverse=True)
+    
+    # Take top N
+    top_phrases = top_phrases[:top_n]
+    
+    print(f'  Found {len(top_phrases)} trending phrases')
+    
+    # For each trending phrase, find matching articles and create summary
+    trending_results = []
+    
+    for phrase_data in top_phrases:
+        phrase = phrase_data['phrase']
+        
+        # Find articles containing this phrase
+        matching_articles = []
+        for article in articles:
+            if phrase in article['title'].lower():
+                matching_articles.append(article)
+        
+        if len(matching_articles) >= 3:
+            # Generate summary from top 3 article titles
+            summary_titles = []
+            for article in matching_articles[:3]:
+                title = article['title']
+                # Clean title
+                for prefix in ['Exclusive:', 'Breaking:', 'Opinion:', 'Analysis:']:
+                    title = title.replace(prefix, '').strip()
+                if len(title) > 80:
+                    title = title[:77] + '...'
+                summary_titles.append(title)
             
-            trending.append({
-                'topic': theme_name,
-                'count': len(cluster_articles),
-                'articles': cluster_articles,
+            summary = ' • '.join(summary_titles)
+            
+            trending_results.append({
+                'topic': phrase.title(),
+                'count': len(matching_articles),
                 'summary': summary
             })
     
-    # Sort by article count (most covered first)
-    trending.sort(key=lambda x: x['count'], reverse=True)
-    
-    return trending[:top_n]
-
-# ============================================
-# GENERATE FREE SUMMARY
-# ============================================
-def generate_free_summary(topic_name, articles):
-    """
-    Generate summary from article titles (no API needed)
-    """
-    
-    if not articles:
-        return 'Multiple developments reported.'
-    
-    # Extract key information from titles
-    summary_parts = []
-    
-    for article in articles[:3]:  # Use top 3 articles
-        title = article['title']
-        
-        # Clean and shorten title for summary
-        cleaned = title
-        for prefix in ['Exclusive:', 'Breaking:', 'Opinion:', 'Analysis:', 'Update:']:
-            cleaned = cleaned.replace(prefix, '').strip()
-        
-        # Shorten if needed
-        if len(cleaned) > 70:
-            # Try to cut at sentence boundary
-            if '.' in cleaned[:70]:
-                cleaned = cleaned[:cleaned[:70].rindex('.')] + '.'
-            elif ',' in cleaned[:70]:
-                cleaned = cleaned[:cleaned[:70].rindex(',')] + '...'
-            else:
-                cleaned = cleaned[:67] + '...'
-        
-        summary_parts.append(cleaned)
-    
-    # Join with bullet points
-    summary = ' • '.join(summary_parts)
-    
-    return summary
+    return trending_results
 
 # Load configuration
 RECIPIENTS = load_recipients()
@@ -399,7 +385,6 @@ for feed_name, feed_info in feeds.items():
         print('\n' + feed_name + ':')
         
         try:
-            # CRITICAL: Use User-Agent header to avoid being blocked
             feed = feedparser.parse(url, request_headers={
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             })
@@ -433,15 +418,13 @@ for feed_name, feed_info in feeds.items():
                     except:
                         pass
                 
-                # CRITICAL: Use 48-hour window (2 days) to match validator
                 if pub_date:
                     age_hours = (datetime.now() - pub_date).total_seconds() / 3600
-                    if age_hours <= 48:  # 48 hour window
+                    if age_hours <= 48:
                         recent_count += 1
                     else:
-                        continue  # Skip old articles
+                        continue
                 else:
-                    # No date - assume recent (same as validator)
                     recent_count += 1
                 
                 title = entry.get('title', '').strip()
@@ -454,7 +437,6 @@ for feed_name, feed_info in feeds.items():
                 if link in seen_urls:
                     continue
                 
-                # Keyword matching (same as validator)
                 text = (title + ' ' + str(description)).lower()
                 is_relevant = any(kw in text for kw in keywords)
                 
@@ -475,8 +457,8 @@ for feed_name, feed_info in feeds.items():
                         'description': description
                     }
                     
-                    # CRITICAL: Skip if similar article already exists
-                    if not is_duplicate_article(new_article, articles, threshold=SIMILARITY_THRESHOLD):
+                    # Advanced deduplication
+                    if not is_duplicate_advanced(new_article, articles):
                         articles.append(new_article)
                         source_count += 1
                     else:
@@ -516,7 +498,6 @@ print(f'Articles before deduplication: {total_before_dedup}')
 print(f'Duplicates removed: {duplicate_count}')
 print(f'Unique articles remaining: {len(articles)}')
 print(f'Reduction: {dedup_percentage:.1f}%')
-print(f'Similarity threshold: {SIMILARITY_THRESHOLD} (60% similar = duplicate)')
 
 # ============================================
 # SUMMARY
@@ -551,25 +532,25 @@ for topic in sorted(topic_counts.keys()):
 print('=' * 60)
 
 # ============================================
-# IDENTIFY TRENDING TOPICS (FREE)
+# WORD CLOUD TRENDING DETECTION
 # ============================================
 trending_topics = []
 
 if len(articles) >= MIN_ARTICLES_FOR_TRENDING:
     print('\n' + '=' * 60)
-    print('IDENTIFYING TRENDING TOPICS')
+    print('IDENTIFYING TRENDING TOPICS (WORD CLOUD)')
     print('=' * 60)
-    print(f'Articles available: {len(articles)} (min: {MIN_ARTICLES_FOR_TRENDING})')
+    print(f'Articles available: {len(articles)}')
     
-    trending_topics = identify_trending_topics_free(articles, top_n=MAX_TRENDING_TOPICS)
+    trending_topics = identify_trending_wordcloud(articles, top_n=MAX_TRENDING_TOPICS)
     
     if trending_topics:
         print(f'\n✓ Found {len(trending_topics)} trending topics:')
         for i, trending in enumerate(trending_topics, 1):
             print(f"  {i}. {trending['topic']}: {trending['count']} articles")
-        print('\n✅ Trending analysis complete (100% FREE)')
+        print('\n✅ Trending analysis complete (WORD CLOUD)')
     else:
-        print('\n⚠️  No significant trending topics identified (need 5+ articles per theme)')
+        print('\n⚠️  No significant trending topics found')
 else:
     print(f'\n⚠️  Trending detection: SKIPPED (only {len(articles)} articles, need {MIN_ARTICLES_FOR_TRENDING}+)')
 
@@ -590,7 +571,7 @@ else:
     
     messages = []
     
-    # HEADER MESSAGE (always separate)
+    # HEADER MESSAGE
     header_msg = '*Financial News Digest*\n'
     header_msg = header_msg + datetime.now().strftime('%B %d, %Y') + '\n\n'
     
@@ -600,7 +581,7 @@ else:
     header_msg = header_msg + str(total_articles) + ' articles from ' + str(len(all_pubs)) + ' publications\n'
     header_msg = header_msg + '━━━━━━━━━━━━━━━━━\n\n'
     
-    # Add trending section to header if available
+    # Add trending section
     if trending_topics:
         header_msg = header_msg + '*🔥 TRENDING TODAY*\n\n'
         
@@ -612,7 +593,7 @@ else:
     
     messages.append(header_msg)
     
-    # Build content messages with simple splitting
+    # Build content messages
     current_msg = ''
     
     for topic_config in topics:
@@ -626,10 +607,8 @@ else:
         if not publications_in_topic:
             continue
         
-        # Start topic section
         topic_header = '*' + topic_name + '*\n\n'
         
-        # Check if we need to start a new message for this topic
         if current_msg and len(current_msg) + len(topic_header) > 2500:
             messages.append(current_msg)
             current_msg = ''
@@ -644,40 +623,32 @@ else:
             
             articles_from_pub = sorted(articles_from_pub, key=lambda x: x['date'], reverse=True)
             
-            # Build publication section
             pub_header = '_' + pub_acronym + '_\n'
             
-            # Check if publication header fits
             if len(current_msg) + len(pub_header) > 2500:
                 messages.append(current_msg)
                 current_msg = topic_header + pub_header
             else:
                 current_msg = current_msg + pub_header
             
-            # Add articles one by one
             for i, article in enumerate(articles_from_pub, 1):
                 title_short = article['title']
                 
                 if len(title_short) > 75:
                     title_short = title_short[:72] + '...'
                 
-                # Only escape ] and \ in link titles
                 title_escaped = escape_markdown_title(title_short)
                 
                 article_line = str(i) + '. [' + title_escaped + '](' + article['url'] + ')\n'
                 
-                # Check if article fits in current message
                 if len(current_msg) + len(article_line) > 2500:
-                    # Start new message with topic and publication headers
                     messages.append(current_msg)
                     current_msg = topic_header + pub_header + article_line
                 else:
                     current_msg = current_msg + article_line
             
-            # Add blank line after each publication
             current_msg = current_msg + '\n'
     
-    # Add any remaining content
     if current_msg.strip():
         messages.append(current_msg)
 
@@ -718,7 +689,6 @@ else:
                         print('  ✅ Sent')
                     else:
                         print('  ❌ Error: ' + str(response.status_code))
-                        # Print response for debugging
                         try:
                             print('  Response: ' + str(response.json()))
                         except:
