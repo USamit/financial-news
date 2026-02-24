@@ -332,6 +332,7 @@ for feed_name, feed_info in feeds.items():
         print('\n' + feed_name + ':')
         
         try:
+            # CRITICAL: Use User-Agent header (matches validator)
             feed = feedparser.parse(url, request_headers={
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             })
@@ -364,12 +365,16 @@ for feed_name, feed_info in feeds.items():
                     except:
                         pass
                 
-                if pub_date and (datetime.now() - pub_date) <= timedelta(days=1):
-                    recent_count += 1
-                elif not pub_date:
-                    recent_count += 1
+                # CRITICAL: Use 48-hour window (2 days) to match validator
+                if pub_date:
+                    age_hours = (datetime.now() - pub_date).total_seconds() / 3600
+                    if age_hours <= 48:  # 48 hour window
+                        recent_count += 1
+                    else:
+                        continue  # Skip old articles
                 else:
-                    continue
+                    # No date - assume recent (same as validator)
+                    recent_count += 1
                 
                 title = entry.get('title', '').strip()
                 description = entry.get('summary', '') or entry.get('description', '')
@@ -381,6 +386,7 @@ for feed_name, feed_info in feeds.items():
                 if link in seen_urls:
                     continue
                 
+                # Keyword matching (same as validator)
                 text = (title + ' ' + str(description)).lower()
                 is_relevant = any(kw in text for kw in keywords)
                 
@@ -412,13 +418,14 @@ for feed_name, feed_info in feeds.items():
             'relevant': source_count
         }
         
-        print('  Recent (24hrs): ' + str(recent_count))
+        print('  Recent (48hrs): ' + str(recent_count))
         print('  Relevant: ' + str(source_count))
         
     except Exception as e:
         print('  ❌ Error: ' + str(e)[:50])
         feed_stats[feed_name] = {'total': 0, 'recent': 0, 'relevant': 0}
         continue
+
 
 # ============================================
 # SUMMARY
