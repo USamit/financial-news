@@ -20,6 +20,7 @@ print('=' * 60)
 # ============================================
 MIN_ARTICLES_FOR_TRENDING = 50  # Don't run trending on small batches
 MAX_TRENDING_TOPICS = 5  # Show top 5 trending topics
+SIMILARITY_THRESHOLD = 0.6  # Aggressive deduplication (0.6 = 60% similar)
 
 # ============================================
 # LOAD RECIPIENTS from recipients.txt
@@ -160,6 +161,59 @@ def escape_markdown_title(text):
     text = text.replace('\\', '\\\\')  # Escape backslashes first
     text = text.replace(']', '\\]')    # Escape closing brackets
     return text
+
+# ============================================
+# DETECT SIMILAR ARTICLES (DEDUPLICATION)
+# ============================================
+def are_articles_similar(title1, title2, threshold=0.6):
+    """
+    Check if two article titles are similar (likely same story)
+    Returns True if similarity > threshold
+    """
+    # Normalize titles
+    def normalize(text):
+        # Lowercase and remove common words
+        common_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 
+                       'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'be',
+                       'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will',
+                       'would', 'could', 'should', 'may', 'might', 'can', 'says', 'said',
+                       'after', 'amid', 'over', 'up', 'down', 'out', 'its', 'new'}
+        
+        # Split into words and clean
+        words = text.lower().replace('-', ' ').replace(':', ' ').split()
+        words = [w.strip('.,!?;()[]{}\'\"') for w in words]
+        words = [w for w in words if w and w not in common_words and len(w) > 2]
+        
+        return set(words)
+    
+    words1 = normalize(title1)
+    words2 = normalize(title2)
+    
+    if not words1 or not words2:
+        return False
+    
+    # Calculate Jaccard similarity (intersection over union)
+    intersection = len(words1.intersection(words2))
+    union = len(words1.union(words2))
+    
+    if union == 0:
+        return False
+    
+    similarity = intersection / union
+    
+    return similarity >= threshold
+
+def is_duplicate_article(new_article, existing_articles, threshold=0.6):
+    """
+    Check if new article is similar to any existing article
+    """
+    new_title = new_article['title']
+    
+    for existing in existing_articles:
+        if are_articles_similar(new_title, existing['title'], threshold):
+            return True
+    
+    return False
 
 # ============================================
 # CATEGORIZE ARTICLE BY TOPIC
@@ -328,6 +382,7 @@ if not feeds:
 articles = []
 feed_stats = {}
 seen_urls = set()
+duplicate_count = 0
 
 # ============================================
 # PROCESS RSS FEEDS
@@ -367,6 +422,7 @@ for feed_name, feed_info in feeds.items():
         
         recent_count = 0
         source_count = 0
+        feed_duplicates = 0
         
         for entry in feed.entries[:100]:
             try:
@@ -408,7 +464,7 @@ for feed_name, feed_info in feeds.items():
                     
                     topic = categorize_article(title, description, topics)
                     
-                    articles.append({
+                    new_article = {
                         'source': feed_name,
                         'publication': acronym,
                         'title': title,
@@ -417,9 +473,15 @@ for feed_name, feed_info in feeds.items():
                         'date': pub_date or datetime.now(),
                         'topic': topic,
                         'description': description
-                    })
+                    }
                     
-                    source_count += 1
+                    # CRITICAL: Skip if similar article already exists
+                    if not is_duplicate_article(new_article, articles, threshold=SIMILARITY_THRESHOLD):
+                        articles.append(new_article)
+                        source_count += 1
+                    else:
+                        feed_duplicates += 1
+                        duplicate_count += 1
                         
             except Exception as e:
                 continue
@@ -432,11 +494,29 @@ for feed_name, feed_info in feeds.items():
         
         print('  Recent (48hrs): ' + str(recent_count))
         print('  Relevant: ' + str(source_count))
+        if feed_duplicates > 0:
+            print('  Duplicates skipped: ' + str(feed_duplicates))
         
     except Exception as e:
         print('  ❌ Error: ' + str(e)[:50])
         feed_stats[feed_name] = {'total': 0, 'recent': 0, 'relevant': 0}
         continue
+
+# ============================================
+# DEDUPLICATION SUMMARY
+# ============================================
+print('\n' + '=' * 60)
+print('DEDUPLICATION SUMMARY')
+print('=' * 60)
+
+total_before_dedup = len(articles) + duplicate_count
+dedup_percentage = (duplicate_count / total_before_dedup * 100) if total_before_dedup > 0 else 0
+
+print(f'Articles before deduplication: {total_before_dedup}')
+print(f'Duplicates removed: {duplicate_count}')
+print(f'Unique articles remaining: {len(articles)}')
+print(f'Reduction: {dedup_percentage:.1f}%')
+print(f'Similarity threshold: {SIMILARITY_THRESHOLD} (60% similar = duplicate)')
 
 # ============================================
 # SUMMARY
@@ -602,8 +682,6 @@ else:
         messages.append(current_msg)
 
 print('\n📊 Split into ' + str(len(messages)) + ' messages')
-
-
 
 # ============================================
 # SEND TO ALL RECIPIENTS
