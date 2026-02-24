@@ -5,29 +5,24 @@ import requests
 from collections import defaultdict
 import socket
 
-# Set global timeout for all network operations
 socket.setdefaulttimeout(10)
 
 token = os.getenv('TELEGRAM_BOT_TOKEN')
 chat = os.getenv('TELEGRAM_CHAT_ID')
 
 print('=' * 60)
-print('Starting Financial News Aggregator...')
+print('Starting Financial News Aggregator (DEBUG MODE)')
 print('=' * 60)
 
-# ============================================
-# CONFIGURATION
-# ============================================
-MIN_ARTICLES_FOR_TRENDING = 50  # Don't run trending on small batches
-MAX_TRENDING_TOPICS = 5  # Show top 5 trending topics
+# Configuration
+MIN_ARTICLES_FOR_TRENDING = 50
+MAX_TRENDING_TOPICS = 5
 
 # ============================================
-# LOAD RECIPIENTS from recipients.txt
+# LOAD RECIPIENTS
 # ============================================
 def load_recipients():
-    """Load recipient chat IDs from recipients.txt file"""
     recipients = []
-    
     if chat:
         recipients.append(chat)
         print('✓ Added primary recipient from secret')
@@ -49,12 +44,10 @@ def load_recipients():
         return recipients
 
 # ============================================
-# LOAD KEYWORDS from keywords.txt
+# LOAD KEYWORDS
 # ============================================
 def load_keywords():
-    """Load keywords from keywords.txt file"""
     keywords = []
-    
     try:
         with open('keywords.txt', 'r') as f:
             for line in f:
@@ -63,21 +56,20 @@ def load_keywords():
                     continue
                 keywords.append(line.lower())
         print('✓ Loaded ' + str(len(keywords)) + ' keywords')
+        print('  First 10 keywords:', keywords[:10])
         return keywords
     except FileNotFoundError:
-        print('⚠ keywords.txt not found - using minimal defaults')
+        print('⚠ keywords.txt not found - using defaults')
         return ['bank', 'banking', 'finance', 'insurance', 'market', 'economy']
     except Exception as e:
         print('⚠ Error loading keywords: ' + str(e))
         return ['bank', 'banking', 'finance', 'insurance', 'market', 'economy']
 
 # ============================================
-# LOAD FEEDS from feeds.txt
+# LOAD FEEDS
 # ============================================
 def load_feeds():
-    """Load RSS feeds from feeds.txt file with acronyms"""
     feeds = {}
-    
     try:
         with open('feeds.txt', 'r') as f:
             for line in f:
@@ -85,7 +77,6 @@ def load_feeds():
                 if not line or line.startswith('#'):
                     continue
                 
-                # Expected format: Feed Name|Acronym|URL
                 if '|' in line:
                     parts = line.split('|')
                     
@@ -101,23 +92,26 @@ def load_feeds():
                         feeds[feed_name] = {'url': url, 'acronym': acronym}
         
         print('✓ Loaded ' + str(len(feeds)) + ' RSS feeds')
+        
+        # DEBUG: Show BS feeds
+        bs_feeds = {k: v for k, v in feeds.items() if v['acronym'] == 'BS'}
+        print('  DEBUG: Found ' + str(len(bs_feeds)) + ' BS feeds:')
+        for name in list(bs_feeds.keys())[:5]:
+            print('    - ' + name)
+        
         return feeds
     except FileNotFoundError:
-        print('⚠ feeds.txt not found - using minimal defaults')
-        return {
-            'ET Markets': {'url': 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms', 'acronym': 'ET'}
-        }
+        print('⚠ feeds.txt not found')
+        return {}
     except Exception as e:
         print('⚠ Error loading feeds: ' + str(e))
         return {}
 
 # ============================================
-# LOAD TOPICS from topics.txt
+# LOAD TOPICS
 # ============================================
 def load_topics():
-    """Load topic categorization from topics.txt file"""
     topics = []
-    
     try:
         with open('topics.txt', 'r') as f:
             for line in f:
@@ -140,7 +134,7 @@ def load_topics():
         print('✓ Loaded ' + str(len(topics)) + ' topic categories')
         return topics
     except FileNotFoundError:
-        print('⚠ topics.txt not found - using minimal defaults')
+        print('⚠ topics.txt not found - using defaults')
         return [
             {'name': 'BANKING & FINANCE', 'keywords': ['bank', 'banking', 'loan', 'credit']},
             {'name': 'OTHER NEWS', 'keywords': ['other', 'news']}
@@ -150,12 +144,10 @@ def load_topics():
         return [{'name': 'OTHER NEWS', 'keywords': ['other', 'news']}]
 
 # ============================================
-# CATEGORIZE ARTICLE BY TOPIC
+# CATEGORIZE ARTICLE
 # ============================================
 def categorize_article(title, description, topics):
-    """Categorize article using scoring"""
     text = (title + ' ' + str(description)).lower()
-    
     topic_scores = {}
     
     for topic in topics:
@@ -174,18 +166,12 @@ def categorize_article(title, description, topics):
     return 'OTHER NEWS'
 
 # ============================================
-# FREE TRENDING DETECTION (MINIMAL PATTERNS)
+# TRENDING DETECTION
 # ============================================
 def identify_trending_topics_free(articles, top_n=5):
-    """
-    Identify trending topics by clustering articles into news themes
-    Uses minimal patterns for current events (not duplicating keywords.txt)
-    """
-    
     if len(articles) < 10:
         return []
     
-    # Get current quarter dynamically
     current_month = datetime.now().month
     if 1 <= current_month <= 3:
         quarter = 'Q4'
@@ -200,40 +186,19 @@ def identify_trending_topics_free(articles, top_n=5):
         quarter = 'Q3'
         quarter_patterns = ['q3', 'third quarter', 'results', 'earnings']
     
-    # Minimal news theme patterns (these are EVENT THEMES, not keywords)
     trending_themes = {
-        'Trade & Tariffs': [
-            'tariff', 'bilateral trade', 'trade deal', 'trade war', 
-            'export', 'import', 'trade agreement'
-        ],
-        f'{quarter} Earnings': quarter_patterns + [
-            'profit', 'revenue', 'quarterly', 'beat estimates', 'miss estimates'
-        ],
-        'Rate Decisions': [
-            'rate cut', 'rate hike', 'repo rate', 'policy rate', 
-            'monetary policy', 'interest rate decision'
-        ],
-        'IPO & Listings': [
-            'ipo', 'listing', 'issue price', 'subscription', 
-            'grey market premium', 'allotment'
-        ],
-        'Mergers & Deals': [
-            'merger', 'acquisition', 'm&a', 'stake sale', 
-            'buyout', 'takeover'
-        ],
-        'Regulatory Actions': [
-            'sebi action', 'irdai guideline', 'rbi circular', 
-            'penalty', 'enforcement', 'investigation'
-        ],
+        'Trade & Tariffs': ['tariff', 'bilateral trade', 'trade deal', 'trade war', 'export', 'import', 'trade agreement'],
+        f'{quarter} Earnings': quarter_patterns + ['profit', 'revenue', 'quarterly', 'beat estimates', 'miss estimates'],
+        'Rate Decisions': ['rate cut', 'rate hike', 'repo rate', 'policy rate', 'monetary policy', 'interest rate decision'],
+        'IPO & Listings': ['ipo', 'listing', 'issue price', 'subscription', 'grey market premium', 'allotment'],
+        'Mergers & Deals': ['merger', 'acquisition', 'm&a', 'stake sale', 'buyout', 'takeover'],
+        'Regulatory Actions': ['sebi action', 'irdai guideline', 'rbi circular', 'penalty', 'enforcement', 'investigation'],
     }
     
-    # Cluster articles by theme
     theme_clusters = defaultdict(list)
     
     for article in articles:
         text = article['title'].lower()
-        
-        # Find best matching theme
         best_theme = None
         max_matches = 0
         
@@ -246,12 +211,10 @@ def identify_trending_topics_free(articles, top_n=5):
         if best_theme and max_matches > 0:
             theme_clusters[best_theme].append(article)
     
-    # Build trending list
     trending = []
     for theme_name, cluster_articles in theme_clusters.items():
-        if len(cluster_articles) >= 5:  # Minimum 5 articles to be "trending"
+        if len(cluster_articles) >= 5:
             summary = generate_free_summary(theme_name, cluster_articles[:5])
-            
             trending.append({
                 'topic': theme_name,
                 'count': len(cluster_articles),
@@ -259,36 +222,21 @@ def identify_trending_topics_free(articles, top_n=5):
                 'summary': summary
             })
     
-    # Sort by article count (most covered first)
     trending.sort(key=lambda x: x['count'], reverse=True)
-    
     return trending[:top_n]
 
-# ============================================
-# GENERATE FREE SUMMARY
-# ============================================
 def generate_free_summary(topic_name, articles):
-    """
-    Generate summary from article titles (no API needed)
-    """
-    
     if not articles:
         return 'Multiple developments reported.'
     
-    # Extract key information from titles
     summary_parts = []
-    
-    for article in articles[:3]:  # Use top 3 articles
+    for article in articles[:3]:
         title = article['title']
-        
-        # Clean and shorten title for summary
         cleaned = title
         for prefix in ['Exclusive:', 'Breaking:', 'Opinion:', 'Analysis:', 'Update:']:
             cleaned = cleaned.replace(prefix, '').strip()
         
-        # Shorten if needed
         if len(cleaned) > 70:
-            # Try to cut at sentence boundary
             if '.' in cleaned[:70]:
                 cleaned = cleaned[:cleaned[:70].rindex('.')] + '.'
             elif ',' in cleaned[:70]:
@@ -298,10 +246,7 @@ def generate_free_summary(topic_name, articles):
         
         summary_parts.append(cleaned)
     
-    # Join with bullet points
-    summary = ' • '.join(summary_parts)
-    
-    return summary
+    return ' • '.join(summary_parts)
 
 # Load configuration
 RECIPIENTS = load_recipients()
@@ -318,45 +263,56 @@ feed_stats = {}
 seen_urls = set()
 
 # ============================================
-# PROCESS RSS FEEDS
+# PROCESS RSS FEEDS (HEAVY DEBUG)
 # ============================================
 print('\n' + '=' * 60)
 print('FETCHING ARTICLES FROM ' + str(len(feeds)) + ' FEEDS')
 print('=' * 60)
+
+debug_feed_count = 0
 
 for feed_name, feed_info in feeds.items():
     try:
         url = feed_info['url']
         acronym = feed_info['acronym']
         
-        print('\n' + feed_name + ':')
+        print('\n[' + str(debug_feed_count + 1) + '/' + str(len(feeds)) + '] ' + feed_name + ' (' + acronym + ')')
+        print('  URL: ' + url[:60] + '...')
+        
+        # DEBUG: Focus on BS feeds
+        is_bs_feed = (acronym == 'BS')
         
         try:
-            # CRITICAL: Use User-Agent header (matches validator)
             feed = feedparser.parse(url, request_headers={
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             })
         except socket.timeout:
             print('  ⏱️  TIMEOUT - Skipping')
             feed_stats[feed_name] = {'total': 0, 'recent': 0, 'relevant': 0}
+            debug_feed_count += 1
             continue
         except Exception as e:
-            print('  ❌ Error: ' + str(e)[:50])
+            print('  ❌ Parse Error: ' + str(e)[:50])
             feed_stats[feed_name] = {'total': 0, 'recent': 0, 'relevant': 0}
+            debug_feed_count += 1
             continue
         
         total_entries = len(feed.entries)
         print('  Total entries: ' + str(total_entries))
         
         if not feed.entries:
-            print('  No entries found')
+            print('  ❌ No entries found')
             feed_stats[feed_name] = {'total': 0, 'recent': 0, 'relevant': 0}
+            debug_feed_count += 1
             continue
         
         recent_count = 0
         source_count = 0
         
-        for entry in feed.entries[:100]:
+        # DEBUG: Track first BS article
+        first_bs_article_shown = False
+        
+        for entry_idx, entry in enumerate(feed.entries[:100]):
             try:
                 pub_date = None
                 if hasattr(entry, 'published_parsed') and entry.published_parsed:
@@ -365,15 +321,14 @@ for feed_name, feed_info in feeds.items():
                     except:
                         pass
                 
-                # CRITICAL: Use 48-hour window (2 days) to match validator
+                # 48-hour window
                 if pub_date:
                     age_hours = (datetime.now() - pub_date).total_seconds() / 3600
-                    if age_hours <= 48:  # 48 hour window
+                    if age_hours <= 48:
                         recent_count += 1
                     else:
-                        continue  # Skip old articles
+                        continue
                 else:
-                    # No date - assume recent (same as validator)
                     recent_count += 1
                 
                 title = entry.get('title', '').strip()
@@ -386,14 +341,24 @@ for feed_name, feed_info in feeds.items():
                 if link in seen_urls:
                     continue
                 
-                # Keyword matching (same as validator)
+                # Keyword matching
                 text = (title + ' ' + str(description)).lower()
                 is_relevant = any(kw in text for kw in keywords)
+                
+                # DEBUG: Show first article from BS feeds
+                if is_bs_feed and not first_bs_article_shown and entry_idx < 5:
+                    print(f'  DEBUG Entry {entry_idx + 1}:')
+                    print(f'    Title: {title[:80]}')
+                    print(f'    Age: {age_hours:.1f}h' if pub_date else '    Age: Unknown')
+                    print(f'    Relevant: {is_relevant}')
+                    if is_relevant:
+                        matching_kw = [kw for kw in keywords if kw in text]
+                        print(f'    Matched keywords: {matching_kw[:5]}')
+                        first_bs_article_shown = True
                 
                 if is_relevant:
                     seen_urls.add(link)
                     time_str = pub_date.strftime('%H:%M') if pub_date else 'Recent'
-                    
                     topic = categorize_article(title, description, topics)
                     
                     articles.append({
@@ -410,6 +375,8 @@ for feed_name, feed_info in feeds.items():
                     source_count += 1
                         
             except Exception as e:
+                if is_bs_feed:
+                    print(f'  ⚠️  Error processing entry: {str(e)[:40]}')
                 continue
         
         feed_stats[feed_name] = {
@@ -421,15 +388,18 @@ for feed_name, feed_info in feeds.items():
         print('  Recent (48hrs): ' + str(recent_count))
         print('  Relevant: ' + str(source_count))
         
+        if is_bs_feed and source_count == 0:
+            print('  ⚠️  BS FEED WITH 0 RELEVANT ARTICLES - CHECK DEBUG OUTPUT ABOVE')
+        
+        debug_feed_count += 1
+        
     except Exception as e:
-        print('  ❌ Error: ' + str(e)[:50])
+        print('  ❌ Feed Error: ' + str(e)[:50])
         feed_stats[feed_name] = {'total': 0, 'recent': 0, 'relevant': 0}
+        debug_feed_count += 1
         continue
 
-
-# ============================================
 # SUMMARY
-# ============================================
 print('\n' + '=' * 60)
 print('SUMMARY BY PUBLICATION')
 print('=' * 60)
@@ -447,171 +417,15 @@ for pub in sorted(all_publications):
 print('\nTotal unique articles: ' + str(len(articles)))
 
 print('\n' + '=' * 60)
-print('SUMMARY BY TOPIC')
+print('DEBUG: Articles by publication')
 print('=' * 60)
-
-topic_counts = defaultdict(int)
+by_pub = defaultdict(int)
 for article in articles:
-    topic_counts[article['topic']] += 1
+    by_pub[article['publication']] += 1
 
-for topic in sorted(topic_counts.keys()):
-    print(topic + ': ' + str(topic_counts[topic]) + ' articles')
-
-print('=' * 60)
-
-# ============================================
-# IDENTIFY TRENDING TOPICS (FREE)
-# ============================================
-trending_topics = []
-
-if len(articles) >= MIN_ARTICLES_FOR_TRENDING:
-    print('\n' + '=' * 60)
-    print('IDENTIFYING TRENDING TOPICS')
-    print('=' * 60)
-    print(f'Articles available: {len(articles)} (min: {MIN_ARTICLES_FOR_TRENDING})')
-    
-    trending_topics = identify_trending_topics_free(articles, top_n=MAX_TRENDING_TOPICS)
-    
-    if trending_topics:
-        print(f'\n✓ Found {len(trending_topics)} trending topics:')
-        for i, trending in enumerate(trending_topics, 1):
-            print(f"  {i}. {trending['topic']}: {trending['count']} articles")
-        print('\n✅ Trending analysis complete (100% FREE)')
-    else:
-        print('\n⚠️  No significant trending topics identified (need 5+ articles per theme)')
-else:
-    print(f'\n⚠️  Trending detection: SKIPPED (only {len(articles)} articles, need {MIN_ARTICLES_FOR_TRENDING}+)')
+for pub in sorted(by_pub.keys()):
+    print(f'{pub}: {by_pub[pub]} articles')
 
 print('=' * 60)
-
-# ============================================
-# BUILD TELEGRAM MESSAGE
-# ============================================
-if not articles:
-    msg = '*Financial News Digest*\n' + datetime.now().strftime('%B %d, %Y') + '\n\nNo relevant articles found today.'
-    messages = [msg]
-else:
-    articles.sort(key=lambda x: x['date'], reverse=True)
-    
-    by_topic = defaultdict(lambda: defaultdict(list))
-    for article in articles:
-        by_topic[article['topic']][article['publication']].append(article)
-    
-    messages = []
-    current_msg = '*Financial News Digest*\n'
-    current_msg = current_msg + datetime.now().strftime('%B %d, %Y') + '\n\n'
-    
-    total_articles = len(articles)
-    all_pubs = set(article['publication'] for article in articles)
-    
-    current_msg = current_msg + str(total_articles) + ' articles from ' + str(len(all_pubs)) + ' publications\n'
-    current_msg = current_msg + '━━━━━━━━━━━━━━━━━\n\n'
-    
-    # Add trending section if available
-    if trending_topics:
-        current_msg = current_msg + '*🔥 TRENDING TODAY*\n\n'
-        
-        for trending in trending_topics:
-            current_msg = current_msg + '*' + trending['topic'] + '* (' + str(trending['count']) + ' articles)\n'
-            current_msg = current_msg + trending['summary'] + '\n\n'
-        
-        current_msg = current_msg + '━━━━━━━━━━━━━━━━━\n\n'
-    
-    def add_section(msg, section_text):
-        if len(msg) + len(section_text) > 3800:
-            return msg, section_text
-        return msg + section_text, ''
-    
-    for topic_config in topics:
-        topic_name = topic_config['name']
-        
-        if topic_name not in by_topic:
-            continue
-        
-        publications_in_topic = by_topic[topic_name]
-        
-        if not publications_in_topic:
-            continue
-        
-        section = '*' + topic_name + '*\n\n'
-        
-        for pub_acronym in sorted(publications_in_topic.keys()):
-            articles_from_pub = publications_in_topic[pub_acronym]
-            
-            if not articles_from_pub:
-                continue
-            
-            articles_from_pub = sorted(articles_from_pub, key=lambda x: x['date'], reverse=True)
-            
-            section = section + '_' + pub_acronym + '_\n'
-            
-            for i, article in enumerate(articles_from_pub, 1):
-                title_short = article['title']
-                
-                if len(title_short) > 75:
-                    title_short = title_short[:72] + '...'
-                
-                section = section + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
-            
-            section = section + '\n'
-        
-        current_msg, overflow = add_section(current_msg, section)
-        if overflow:
-            messages.append(current_msg)
-            current_msg = overflow
-    
-    if current_msg.strip():
-        messages.append(current_msg)
-
-# ============================================
-# SEND TO ALL RECIPIENTS
-# ============================================
-if not token:
-    print('\n❌ ERROR: Missing TELEGRAM_BOT_TOKEN')
-elif not RECIPIENTS:
-    print('\n❌ ERROR: No recipients found')
-else:
-    try:
-        url = 'https://api.telegram.org/bot' + token + '/sendMessage'
-        
-        print('\n' + '=' * 60)
-        print('SENDING TO ' + str(len(RECIPIENTS)) + ' RECIPIENTS')
-        print('=' * 60)
-        
-        for recipient in RECIPIENTS:
-            print('\n📤 Sending to: ' + str(recipient)[:3] + '...')
-            
-            for i, msg in enumerate(messages):
-                print('  Part ' + str(i + 1) + '/' + str(len(messages)))
-                
-                data = {
-                    'chat_id': recipient,
-                    'text': msg,
-                    'parse_mode': 'Markdown',
-                    'disable_web_page_preview': True
-                }
-                
-                try:
-                    response = requests.post(url, json=data, timeout=15)
-                    
-                    if response.status_code == 200:
-                        print('  ✅ Sent')
-                    else:
-                        print('  ❌ Error: ' + str(response.status_code))
-                except requests.Timeout:
-                    print('  ⚠️  Timeout')
-                except Exception as e:
-                    print('  ❌ Error: ' + str(e)[:50])
-                
-                if i < len(messages) - 1:
-                    import time
-                    time.sleep(1)
-        
-        print('\n✅ ALL MESSAGES SENT!')
-            
-    except Exception as e:
-        print('\n❌ ERROR: ' + str(e))
-
-print('\n' + '=' * 60)
-print('Script completed')
+print('Script completed (DEBUG MODE)')
 print('=' * 60)
