@@ -150,18 +150,15 @@ def load_topics():
         return [{'name': 'OTHER NEWS', 'keywords': ['other', 'news']}]
 
 # ============================================
-# ESCAPE MARKDOWN CHARACTERS
+# ESCAPE MARKDOWN FOR LINK TITLES (MINIMAL)
 # ============================================
-def escape_markdown(text):
+def escape_markdown_title(text):
     """
-    Escape special Markdown characters in text for Telegram
+    Escape only characters that break Telegram Markdown in link titles
+    Only need to escape: ] and \
     """
-    # Characters that need escaping in Telegram Markdown
-    special_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
-    
-    for char in special_chars:
-        text = text.replace(char, '\\' + char)
-    
+    text = text.replace('\\', '\\\\')  # Escape backslashes first
+    text = text.replace(']', '\\]')    # Escape closing brackets
     return text
 
 # ============================================
@@ -532,10 +529,12 @@ else:
         current_msg = current_msg + '━━━━━━━━━━━━━━━━━\n\n'
     
     def add_section(msg, section_text):
-        if len(msg) + len(section_text) > 3800:
+        # CRITICAL: Use 3000 char limit to avoid "message too long" errors
+        if len(msg) + len(section_text) > 3000:
             return msg, section_text
         return msg + section_text, ''
     
+    # CRITICAL: Iterate topics in order from topics.txt (preserves priority)
     for topic_config in topics:
         topic_name = topic_config['name']
         
@@ -565,8 +564,8 @@ else:
                 if len(title_short) > 75:
                     title_short = title_short[:72] + '...'
                 
-                # CRITICAL: Escape special Markdown characters
-                title_escaped = escape_markdown(title_short)
+                # CRITICAL: Only escape ] and \ in link titles
+                title_escaped = escape_markdown_title(title_short)
                 
                 section = section + str(i) + '. [' + title_escaped + '](' + article['url'] + ')\n'
             
