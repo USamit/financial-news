@@ -20,7 +20,7 @@ print('=' * 60)
 # CONFIGURATION
 # ============================================
 MIN_ARTICLES_FOR_TRENDING = 50
-MAX_TRENDING_TOPICS = 5
+MAX_TRENDING_TOPICS = 10
 
 # ============================================
 # LOAD RECIPIENTS from recipients.txt
