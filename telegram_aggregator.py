@@ -532,7 +532,7 @@ else:
     
     messages.append(header_msg)
     
-    # Build content messages (iterate topics in order from topics.txt)
+    # Build content messages with simple splitting
     current_msg = ''
     
     for topic_config in topics:
@@ -546,8 +546,15 @@ else:
         if not publications_in_topic:
             continue
         
-        # Build topic section
-        topic_section = '*' + topic_name + '*\n\n'
+        # Start topic section
+        topic_header = '*' + topic_name + '*\n\n'
+        
+        # Check if we need to start a new message for this topic
+        if current_msg and len(current_msg) + len(topic_header) > 2500:
+            messages.append(current_msg)
+            current_msg = ''
+        
+        current_msg = current_msg + topic_header
         
         for pub_acronym in sorted(publications_in_topic.keys()):
             articles_from_pub = publications_in_topic[pub_acronym]
@@ -557,8 +564,17 @@ else:
             
             articles_from_pub = sorted(articles_from_pub, key=lambda x: x['date'], reverse=True)
             
-            pub_section = '_' + pub_acronym + '_\n'
+            # Build publication section
+            pub_header = '_' + pub_acronym + '_\n'
             
+            # Check if publication header fits
+            if len(current_msg) + len(pub_header) > 2500:
+                messages.append(current_msg)
+                current_msg = topic_header + pub_header
+            else:
+                current_msg = current_msg + pub_header
+            
+            # Add articles one by one
             for i, article in enumerate(articles_from_pub, 1):
                 title_short = article['title']
                 
@@ -570,41 +586,23 @@ else:
                 
                 article_line = str(i) + '. [' + title_escaped + '](' + article['url'] + ')\n'
                 
-                # Check if adding this article would exceed limit
-                test_length = len(current_msg) + len(topic_section) + len(pub_section) + len(article_line)
-                
-                if test_length > 2500:  # Conservative 2500 char limit
-                    # Save current message and start new one
-                    if current_msg.strip():
-                        messages.append(current_msg)
-                    current_msg = topic_section + pub_section + article_line
-                    topic_section = ''  # Don't repeat topic header
-                else:
-                    pub_section = pub_section + article_line
-            
-            # Check if adding publication section exceeds limit
-            if len(current_msg) + len(topic_section) + len(pub_section) > 2500:
-                # Save current message
-                if current_msg.strip():
+                # Check if article fits in current message
+                if len(current_msg) + len(article_line) > 2500:
+                    # Start new message with topic and publication headers
                     messages.append(current_msg)
-                current_msg = topic_section + pub_section + '\n'
-                topic_section = ''
-            else:
-                topic_section = topic_section + pub_section + '\n'
-        
-        # Add completed topic section to current message
-        if len(current_msg) + len(topic_section) > 2500:
-            if current_msg.strip():
-                messages.append(current_msg)
-            current_msg = topic_section
-        else:
-            current_msg = current_msg + topic_section
+                    current_msg = topic_header + pub_header + article_line
+                else:
+                    current_msg = current_msg + article_line
+            
+            # Add blank line after each publication
+            current_msg = current_msg + '\n'
     
     # Add any remaining content
     if current_msg.strip():
         messages.append(current_msg)
 
 print('\n📊 Split into ' + str(len(messages)) + ' messages')
+
 
 
 # ============================================
