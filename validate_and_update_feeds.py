@@ -163,6 +163,30 @@ DISCOVERY_PATTERNS = {
             'https://www.livemint.com/rss/economy',
         ]
     },
+    'Barrons': {
+        'name': "Barron's",
+        'patterns': [
+            'https://feeds.content.dowjones.io/public/rss/barrons_marketupdate',
+            'https://feeds.content.dowjones.io/public/rss/barrons_topnews',
+            'https://feeds.content.dowjones.io/public/rss/barrons_stockstowatch',
+            'https://feeds.content.dowjones.io/public/rss/barrons_streetwise',
+        ]
+    },
+    'MC': {
+        'name': 'MoneyControl',
+        'patterns': [
+            'https://www.moneycontrol.com/rss/latestnews.xml',
+            'https://www.moneycontrol.com/rss/business.xml',
+            'https://www.moneycontrol.com/rss/marketreports.xml',
+            'https://www.moneycontrol.com/rss/results.xml',
+            'https://www.moneycontrol.com/rss/MCtopnews.xml',
+            'https://www.moneycontrol.com/rss/mostpopular.xml',
+            'https://www.moneycontrol.com/rss/mfnews.xml',
+            'https://www.moneycontrol.com/rss/insurance.xml',
+            'https://www.moneycontrol.com/rss/bankingnews.xml',
+            'https://www.moneycontrol.com/rss/economy.xml',
+        ]
+    },
     'NYT': {
         'name': 'New York Times',
         'patterns': [
@@ -176,14 +200,7 @@ DISCOVERY_PATTERNS = {
         'patterns': [
             'https://feeds.content.dowjones.io/public/rss/RSSMarketsMain',
             'https://feeds.content.dowjones.io/public/rss/WSJcomUSBusiness',
-        ]
-    },
-    'MC': {
-        'name': 'MoneyControl',
-        'patterns': [
-            'https://www.moneycontrol.com/rss/latestnews.xml',
-            'https://www.moneycontrol.com/rss/business.xml',
-            'https://www.moneycontrol.com/rss/marketreports.xml',
+            'https://feeds.content.dowjones.io/public/rss/RSSWorldNews',
         ]
     }
 }
@@ -344,8 +361,8 @@ keywords = load_keywords()
 master_feeds = load_master_feeds()
 
 if not master_feeds:
-    print('ERROR: No feeds in feeds_master.txt')
-    exit(1)
+    print('⚠️  No feeds in feeds_master.txt - will only use auto-discovery')
+    master_feeds = []
 
 print(f'Testing {len(master_feeds)} feeds from feeds_master.txt')
 print('Criteria: 3+ RELEVANT articles (matching keywords) from last 48h\n')
@@ -384,32 +401,31 @@ for i, feed_info in enumerate(master_feeds, 1):
             irrelevant_feeds.append(feed_info)
 
 # ============================================
-# AUTO-DISCOVERY FOR WEAK PUBLICATIONS
+# AUTO-DISCOVERY FOR ALL PUBLICATIONS
 # ============================================
 print('\n' + '=' * 60)
-print('AUTO-DISCOVERY FOR PUBLICATIONS WITH <3 ACTIVE FEEDS')
+print('AUTO-DISCOVERY FOR ALL PUBLICATIONS')
 print('=' * 60)
 
 MIN_FEEDS_PER_PUB = 3
 
-# Check BS first (special scraping)
-if len(by_publication.get('BS', [])) < MIN_FEEDS_PER_PUB:
-    current_count = len(by_publication.get('BS', []))
-    print(f'\n⚠️  Business Standard (BS): Only {current_count} active feeds')
-    print(f'   Target: {MIN_FEEDS_PER_PUB} feeds - discovering alternatives...')
-    
-    discovered = discover_bs_feeds(keywords)
-    
-    # Add discovered feeds (avoid duplicates)
-    existing_urls = {f['url'] for f in by_publication['BS']}
-    
-    for feed_info in discovered:
-        if feed_info['url'] not in existing_urls:
-            working_feeds.append(feed_info)
-            by_publication['BS'].append(feed_info)
-    
-    new_count = len(by_publication['BS'])
-    print(f'   ✅ Now has {new_count} active feeds (+{new_count - current_count} discovered)')
+# Always discover BS feeds (special scraping)
+print(f'\n🔍 Business Standard (BS):')
+current_bs_count = len(by_publication.get('BS', []))
+print(f'   Current: {current_bs_count} feeds - discovering all available...')
+
+discovered = discover_bs_feeds(keywords)
+
+# Add discovered feeds (avoid duplicates)
+existing_urls = {f['url'] for f in by_publication.get('BS', [])}
+
+for feed_info in discovered:
+    if feed_info['url'] not in existing_urls:
+        working_feeds.append(feed_info)
+        by_publication['BS'].append(feed_info)
+
+new_bs_count = len(by_publication['BS'])
+print(f'   ✅ Total BS feeds: {new_bs_count} (+{new_bs_count - current_bs_count} discovered)')
 
 # Check other publications
 for pub_acronym, config in DISCOVERY_PATTERNS.items():
@@ -421,7 +437,7 @@ for pub_acronym, config in DISCOVERY_PATTERNS.items():
         
         discovered = discover_other_feeds(pub_acronym, keywords)
         
-        existing_urls = {f['url'] for f in by_publication[pub_acronym]}
+        existing_urls = {f['url'] for f in by_publication.get(pub_acronym, [])}
         
         for feed_info in discovered:
             if feed_info['url'] not in existing_urls:
@@ -430,6 +446,8 @@ for pub_acronym, config in DISCOVERY_PATTERNS.items():
         
         new_count = len(by_publication[pub_acronym])
         print(f'   ✅ Now has {new_count} active feeds (+{new_count - current_count} discovered)')
+    else:
+        print(f'\n✅ {config["name"]} ({pub_acronym}): {current_count} active feeds')
 
 # ============================================
 # FINAL SUMMARY
@@ -437,7 +455,7 @@ for pub_acronym, config in DISCOVERY_PATTERNS.items():
 print('\n' + '=' * 60)
 print('VALIDATION SUMMARY')
 print('=' * 60)
-print(f'Total feeds tested: {total_tested}')
+print(f'Feeds from master file: {total_tested}')
 print(f'✅ Active & Relevant: {len(working_feeds)}')
 print(f'⚠️  Has content but irrelevant: {len(irrelevant_feeds)}')
 print(f'❌ Broken/Stale: {len(broken_feeds)}')
@@ -464,7 +482,7 @@ try:
         f.write('# AUTO-GENERATED - Only Active & Relevant Feeds\n')
         f.write('# Criteria: 3+ articles matching keywords from last 48h\n')
         f.write(f'# Last validated: {datetime.now().strftime("%Y-%m-%d %H:%M UTC")}\n')
-        f.write(f'# Active feeds: {len(working_feeds)}/{total_tested}\n\n')
+        f.write(f'# Active feeds: {len(working_feeds)}\n\n')
         
         for pub in sorted(by_publication.keys()):
             feeds_list = by_publication[pub]
