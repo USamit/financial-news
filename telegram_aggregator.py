@@ -509,32 +509,32 @@ else:
         by_topic[article['topic']][article['publication']].append(article)
     
     messages = []
-    current_msg = '*Financial News Digest*\n'
-    current_msg = current_msg + datetime.now().strftime('%B %d, %Y') + '\n\n'
+    
+    # HEADER MESSAGE (always separate)
+    header_msg = '*Financial News Digest*\n'
+    header_msg = header_msg + datetime.now().strftime('%B %d, %Y') + '\n\n'
     
     total_articles = len(articles)
     all_pubs = set(article['publication'] for article in articles)
     
-    current_msg = current_msg + str(total_articles) + ' articles from ' + str(len(all_pubs)) + ' publications\n'
-    current_msg = current_msg + '━━━━━━━━━━━━━━━━━\n\n'
+    header_msg = header_msg + str(total_articles) + ' articles from ' + str(len(all_pubs)) + ' publications\n'
+    header_msg = header_msg + '━━━━━━━━━━━━━━━━━\n\n'
     
-    # Add trending section if available
+    # Add trending section to header if available
     if trending_topics:
-        current_msg = current_msg + '*🔥 TRENDING TODAY*\n\n'
+        header_msg = header_msg + '*🔥 TRENDING TODAY*\n\n'
         
         for trending in trending_topics:
-            current_msg = current_msg + '*' + trending['topic'] + '* (' + str(trending['count']) + ' articles)\n'
-            current_msg = current_msg + trending['summary'] + '\n\n'
+            header_msg = header_msg + '*' + trending['topic'] + '* (' + str(trending['count']) + ' articles)\n'
+            header_msg = header_msg + trending['summary'] + '\n\n'
         
-        current_msg = current_msg + '━━━━━━━━━━━━━━━━━\n\n'
+        header_msg = header_msg + '━━━━━━━━━━━━━━━━━\n\n'
     
-    def add_section(msg, section_text):
-        # CRITICAL: Use 3000 char limit to avoid "message too long" errors
-        if len(msg) + len(section_text) > 3000:
-            return msg, section_text
-        return msg + section_text, ''
+    messages.append(header_msg)
     
-    # CRITICAL: Iterate topics in order from topics.txt (preserves priority)
+    # Build content messages (iterate topics in order from topics.txt)
+    current_msg = ''
+    
     for topic_config in topics:
         topic_name = topic_config['name']
         
@@ -546,7 +546,8 @@ else:
         if not publications_in_topic:
             continue
         
-        section = '*' + topic_name + '*\n\n'
+        # Build topic section
+        topic_section = '*' + topic_name + '*\n\n'
         
         for pub_acronym in sorted(publications_in_topic.keys()):
             articles_from_pub = publications_in_topic[pub_acronym]
@@ -556,7 +557,7 @@ else:
             
             articles_from_pub = sorted(articles_from_pub, key=lambda x: x['date'], reverse=True)
             
-            section = section + '_' + pub_acronym + '_\n'
+            pub_section = '_' + pub_acronym + '_\n'
             
             for i, article in enumerate(articles_from_pub, 1):
                 title_short = article['title']
@@ -564,20 +565,47 @@ else:
                 if len(title_short) > 75:
                     title_short = title_short[:72] + '...'
                 
-                # CRITICAL: Only escape ] and \ in link titles
+                # Only escape ] and \ in link titles
                 title_escaped = escape_markdown_title(title_short)
                 
-                section = section + str(i) + '. [' + title_escaped + '](' + article['url'] + ')\n'
+                article_line = str(i) + '. [' + title_escaped + '](' + article['url'] + ')\n'
+                
+                # Check if adding this article would exceed limit
+                test_length = len(current_msg) + len(topic_section) + len(pub_section) + len(article_line)
+                
+                if test_length > 2500:  # Conservative 2500 char limit
+                    # Save current message and start new one
+                    if current_msg.strip():
+                        messages.append(current_msg)
+                    current_msg = topic_section + pub_section + article_line
+                    topic_section = ''  # Don't repeat topic header
+                else:
+                    pub_section = pub_section + article_line
             
-            section = section + '\n'
+            # Check if adding publication section exceeds limit
+            if len(current_msg) + len(topic_section) + len(pub_section) > 2500:
+                # Save current message
+                if current_msg.strip():
+                    messages.append(current_msg)
+                current_msg = topic_section + pub_section + '\n'
+                topic_section = ''
+            else:
+                topic_section = topic_section + pub_section + '\n'
         
-        current_msg, overflow = add_section(current_msg, section)
-        if overflow:
-            messages.append(current_msg)
-            current_msg = overflow
+        # Add completed topic section to current message
+        if len(current_msg) + len(topic_section) > 2500:
+            if current_msg.strip():
+                messages.append(current_msg)
+            current_msg = topic_section
+        else:
+            current_msg = current_msg + topic_section
     
+    # Add any remaining content
     if current_msg.strip():
         messages.append(current_msg)
+
+print('\n📊 Split into ' + str(len(messages)) + ' messages')
+
 
 # ============================================
 # SEND TO ALL RECIPIENTS
