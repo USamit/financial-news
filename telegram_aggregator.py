@@ -150,6 +150,21 @@ def load_topics():
         return [{'name': 'OTHER NEWS', 'keywords': ['other', 'news']}]
 
 # ============================================
+# ESCAPE MARKDOWN CHARACTERS
+# ============================================
+def escape_markdown(text):
+    """
+    Escape special Markdown characters in text for Telegram
+    """
+    # Characters that need escaping in Telegram Markdown
+    special_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
+    
+    for char in special_chars:
+        text = text.replace(char, '\\' + char)
+    
+    return text
+
+# ============================================
 # CATEGORIZE ARTICLE BY TOPIC
 # ============================================
 def categorize_article(title, description, topics):
@@ -202,22 +217,22 @@ def identify_trending_topics_free(articles, top_n=5):
     
     # Minimal news theme patterns (these are EVENT THEMES, not keywords)
     trending_themes = {
-        'Trade & Tariffs': [
+        'Trade and Tariffs': [
             'tariff', 'bilateral trade', 'trade deal', 'trade war', 
             'export', 'import', 'trade agreement'
         ],
-        f'{quarter} Earnings': quarter_patterns + [
+        quarter + ' Earnings': quarter_patterns + [
             'profit', 'revenue', 'quarterly', 'beat estimates', 'miss estimates'
         ],
         'Rate Decisions': [
             'rate cut', 'rate hike', 'repo rate', 'policy rate', 
             'monetary policy', 'interest rate decision'
         ],
-        'IPO & Listings': [
+        'IPO and Listings': [
             'ipo', 'listing', 'issue price', 'subscription', 
             'grey market premium', 'allotment'
         ],
-        'Mergers & Deals': [
+        'Mergers and Deals': [
             'merger', 'acquisition', 'm&a', 'stake sale', 
             'buyout', 'takeover'
         ],
@@ -550,7 +565,10 @@ else:
                 if len(title_short) > 75:
                     title_short = title_short[:72] + '...'
                 
-                section = section + str(i) + '. [' + title_short + '](' + article['url'] + ')\n'
+                # CRITICAL: Escape special Markdown characters
+                title_escaped = escape_markdown(title_short)
+                
+                section = section + str(i) + '. [' + title_escaped + '](' + article['url'] + ')\n'
             
             section = section + '\n'
         
@@ -597,6 +615,11 @@ else:
                         print('  ✅ Sent')
                     else:
                         print('  ❌ Error: ' + str(response.status_code))
+                        # Print response for debugging
+                        try:
+                            print('  Response: ' + str(response.json()))
+                        except:
+                            pass
                 except requests.Timeout:
                     print('  ⚠️  Timeout')
                 except Exception as e:
