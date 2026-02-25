@@ -20,7 +20,8 @@ print('=' * 60)
 # CONFIGURATION
 # ============================================
 MIN_ARTICLES_FOR_TRENDING = 50
-MAX_TRENDING_TOPICS = 10
+MAX_TRENDING_TOPICS = 10  # Show top 10 trending topics
+MESSAGE_CHAR_LIMIT = 3800  # Increased from 2500 to fit more per message
 
 # ============================================
 # LOAD RECIPIENTS from recipients.txt
@@ -157,21 +158,67 @@ def escape_markdown_title(text):
     return text
 
 # ============================================
-# ADVANCED DEDUPLICATION
+# ADVANCED DEDUPLICATION - OPTION A
 # ============================================
-def extract_key_phrases(title):
+
+def extract_entities(title):
     """
-    Extract key phrases from title for better duplicate detection
-    Returns set of important words and bigrams
+    Extract key entities from title (companies, banks, people, organizations)
+    Returns set of entity strings
     """
-    # Stop words to ignore
+    title_upper = title.upper()
+    
+    # Common financial entities
+    entities = set()
+    
+    # Indian banks and financial institutions
+    banks = [
+        'HDFC', 'ICICI', 'SBI', 'AXIS', 'KOTAK', 'INDUSIND', 'YES BANK', 'IDFC',
+        'PNB', 'BOB', 'BOI', 'CANARA', 'UNION BANK', 'INDIAN BANK',
+        'FEDERAL BANK', 'RBL', 'BANDHAN', 'AU SMALL FINANCE', 'IDBI'
+    ]
+    
+    # Insurance companies
+    insurance = [
+        'LIC', 'ICICI PRUDENTIAL', 'HDFC LIFE', 'SBI LIFE', 'MAX LIFE',
+        'BAJAJ ALLIANZ', 'RELIANCE GENERAL', 'IFFCO TOKIO', 'TATA AIG'
+    ]
+    
+    # Major companies
+    companies = [
+        'RELIANCE', 'TCS', 'INFOSYS', 'WIPRO', 'HCL', 'TATA', 'ADANI',
+        'BHARTI AIRTEL', 'MARUTI', 'MAHINDRA', 'ITC', 'LARSEN', 'L&T',
+        'ASIAN PAINTS', 'ULTRATECH', 'BAJAJ', 'GODREJ', 'VEDANTA',
+        'CIPLA', 'SUN PHARMA', 'DR REDDY', 'DIVIS'
+    ]
+    
+    # Regulators and institutions
+    institutions = [
+        'RBI', 'SEBI', 'IRDAI', 'NPCI', 'NITI AAYOG', 'FINANCE MINISTRY',
+        'MINISTRY OF FINANCE', 'SUPREME COURT', 'CBDT', 'GST COUNCIL'
+    ]
+    
+    all_entities = banks + insurance + companies + institutions
+    
+    for entity in all_entities:
+        if entity in title_upper:
+            entities.add(entity)
+    
+    # Extract numbers (percentages, amounts)
+    numbers = re.findall(r'\d+(?:\.\d+)?%|\d+(?:,\d+)*(?:\.\d+)?', title)
+    entities.update(numbers)
+    
+    return entities
+
+def extract_first_n_words(title, n=7):
+    """
+    Extract first N meaningful words from title
+    Removes common stop words
+    """
     stop_words = {
         'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
-        'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'be',
-        'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will',
-        'would', 'could', 'should', 'may', 'might', 'can', 'says', 'said',
-        'after', 'amid', 'over', 'up', 'down', 'out', 'its', 'new', 'this',
-        'that', 'these', 'those', 'his', 'her', 'their', 'our', 'your'
+        'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were',
+        'says', 'said', 'after', 'amid', 'over'
     }
     
     # Clean and tokenize
@@ -179,45 +226,62 @@ def extract_key_phrases(title):
     text = re.sub(r'[^\w\s]', ' ', text)
     words = text.split()
     
-    # Filter stop words and short words
-    words = [w for w in words if w not in stop_words and len(w) > 2]
+    # Keep meaningful words
+    meaningful = []
+    for word in words:
+        if word not in stop_words and len(word) > 2:
+            meaningful.append(word)
+        if len(meaningful) >= n:
+            break
     
-    # Create bigrams (two-word phrases)
-    phrases = set(words)
-    for i in range(len(words) - 1):
-        bigram = words[i] + '_' + words[i + 1]
-        phrases.add(bigram)
-    
-    return phrases
+    return set(meaningful)
 
 def is_duplicate_advanced(new_article, existing_articles):
     """
-    Advanced duplicate detection using key phrase overlap
-    Returns True if article is a duplicate
-    """
-    new_phrases = extract_key_phrases(new_article['title'])
+    Advanced deduplication using:
+    1. Entity matching (same companies/banks mentioned)
+    2. First-N-words matching (similar opening)
     
-    if len(new_phrases) < 3:  # Title too short to compare
-        return False
+    Returns True if duplicate detected
+    """
+    new_title = new_article['title']
+    new_entities = extract_entities(new_title)
+    new_words = extract_first_n_words(new_title, n=7)
     
     for existing in existing_articles:
-        existing_phrases = extract_key_phrases(existing['title'])
+        existing_title = existing['title']
+        existing_entities = extract_entities(existing_title)
+        existing_words = extract_first_n_words(existing_title, n=7)
         
-        if len(existing_phrases) < 3:
-            continue
+        # Check 1: Entity overlap
+        if new_entities and existing_entities:
+            common_entities = new_entities.intersection(existing_entities)
+            
+            # If they share 2+ entities, likely same story
+            if len(common_entities) >= 2:
+                return True
+            
+            # If they share 1 major entity AND similar words, likely duplicate
+            if len(common_entities) >= 1:
+                word_overlap = len(new_words.intersection(existing_words))
+                total_words = len(new_words.union(existing_words))
+                
+                if total_words > 0:
+                    word_similarity = word_overlap / total_words
+                    if word_similarity >= 0.5:  # 50% word overlap
+                        return True
         
-        # Calculate overlap
-        common = new_phrases.intersection(existing_phrases)
-        union = new_phrases.union(existing_phrases)
-        
-        if len(union) == 0:
-            continue
-        
-        # If 50%+ phrases are the same, it's a duplicate
-        similarity = len(common) / len(union)
-        
-        if similarity >= 0.5:
-            return True
+        # Check 2: First-7-words matching
+        if new_words and existing_words:
+            word_overlap = len(new_words.intersection(existing_words))
+            total_words = len(new_words.union(existing_words))
+            
+            if total_words > 0:
+                word_similarity = word_overlap / total_words
+                
+                # If 70%+ of first words match, it's a duplicate
+                if word_similarity >= 0.7:
+                    return True
     
     return False
 
@@ -248,7 +312,7 @@ def categorize_article(title, description, topics):
 # ============================================
 # WORD CLOUD TRENDING DETECTION
 # ============================================
-def identify_trending_wordcloud(articles, top_n=5):
+def identify_trending_wordcloud(articles, top_n=10):
     """
     Identify trending topics using word cloud approach
     Extract most common phrases from article titles
@@ -457,7 +521,7 @@ for feed_name, feed_info in feeds.items():
                         'description': description
                     }
                     
-                    # Advanced deduplication
+                    # Advanced deduplication (Option A)
                     if not is_duplicate_advanced(new_article, articles):
                         articles.append(new_article)
                         source_count += 1
@@ -498,6 +562,7 @@ print(f'Articles before deduplication: {total_before_dedup}')
 print(f'Duplicates removed: {duplicate_count}')
 print(f'Unique articles remaining: {len(articles)}')
 print(f'Reduction: {dedup_percentage:.1f}%')
+print(f'Method: Entity extraction + First-7-words matching')
 
 # ============================================
 # SUMMARY
@@ -593,7 +658,7 @@ else:
     
     messages.append(header_msg)
     
-    # Build content messages
+    # Build content messages with LARGER limit (3800 chars)
     current_msg = ''
     
     for topic_config in topics:
@@ -609,7 +674,7 @@ else:
         
         topic_header = '*' + topic_name + '*\n\n'
         
-        if current_msg and len(current_msg) + len(topic_header) > 2500:
+        if current_msg and len(current_msg) + len(topic_header) > MESSAGE_CHAR_LIMIT:
             messages.append(current_msg)
             current_msg = ''
         
@@ -625,7 +690,7 @@ else:
             
             pub_header = '_' + pub_acronym + '_\n'
             
-            if len(current_msg) + len(pub_header) > 2500:
+            if len(current_msg) + len(pub_header) > MESSAGE_CHAR_LIMIT:
                 messages.append(current_msg)
                 current_msg = topic_header + pub_header
             else:
@@ -641,7 +706,7 @@ else:
                 
                 article_line = str(i) + '. [' + title_escaped + '](' + article['url'] + ')\n'
                 
-                if len(current_msg) + len(article_line) > 2500:
+                if len(current_msg) + len(article_line) > MESSAGE_CHAR_LIMIT:
                     messages.append(current_msg)
                     current_msg = topic_header + pub_header + article_line
                 else:
