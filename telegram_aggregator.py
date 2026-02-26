@@ -22,6 +22,7 @@ print('=' * 60)
 MIN_ARTICLES_FOR_TRENDING = 50
 MAX_TRENDING_TOPICS = 10  # Show top 10 trending topics
 MESSAGE_CHAR_LIMIT = 3800  # Increased from 2500 to fit more per message
+TIME_WINDOW_HOURS = 24  # 24 hours = 1 day of news
 
 # ============================================
 # LOAD RECIPIENTS from recipients.txt
@@ -310,18 +311,30 @@ def categorize_article(title, description, topics):
     return 'OTHER NEWS'
 
 # ============================================
-# WORD CLOUD TRENDING DETECTION
+# WORD CLOUD TRENDING - OPTION C (BLOCKLIST + DIVERSITY)
 # ============================================
 def identify_trending_wordcloud(articles, top_n=10):
     """
     Identify trending topics using word cloud approach
-    Extract most common phrases from article titles
+    OPTION C: Filters noise phrases + requires diversity
     """
     
     if len(articles) < 50:
         return []
     
     print('  Analyzing article titles for trending phrases...')
+    
+    # OPTION C - PART 1: NOISE PHRASES BLOCKLIST
+    noise_phrases = {
+        'share price', 'price live', 'live updates', 'stock market today',
+        'share price live', 'price live updates', 'live update',
+        'stock today', 'market today', 'trading guide', 'buy sell',
+        'stocks watch', 'stocks buy', 'price target', 'price action',
+        'intraday trading', 'stock tips', 'buy or sell', 'stock analysis',
+        'technical analysis', 'price movement', 'stock recommendation',
+        'share update', 'stock update', 'market update', 'trading tips',
+        'stock pick', 'share target', 'stock view', 'market view'
+    }
     
     # Stop words
     stop_words = {
@@ -360,14 +373,22 @@ def identify_trending_wordcloud(articles, top_n=10):
     # Find top phrases (prefer longer phrases)
     top_phrases = []
     
-    # Get top trigrams (3-word phrases)
-    for phrase, count in trigram_counter.most_common(20):
-        if count >= 3:  # At least 3 articles
+    # Get top trigrams (3-word phrases) - LOWERED THRESHOLD
+    for phrase, count in trigram_counter.most_common(30):
+        # OPTION C - FILTER: Skip noise phrases
+        if any(noise in phrase for noise in noise_phrases):
+            continue
+        
+        if count >= 2:  # LOWERED from 3 to 2
             top_phrases.append({'phrase': phrase, 'count': count, 'type': 'trigram'})
     
-    # Get top bigrams (2-word phrases)
-    for phrase, count in bigram_counter.most_common(30):
-        if count >= 5:  # At least 5 articles
+    # Get top bigrams (2-word phrases) - LOWERED THRESHOLD
+    for phrase, count in bigram_counter.most_common(50):
+        # OPTION C - FILTER: Skip noise phrases
+        if any(noise in phrase for noise in noise_phrases):
+            continue
+        
+        if count >= 3:  # LOWERED from 5 to 3
             # Don't add if already part of a trigram
             is_subset = False
             for existing in top_phrases:
@@ -380,10 +401,10 @@ def identify_trending_wordcloud(articles, top_n=10):
     # Sort by count
     top_phrases.sort(key=lambda x: x['count'], reverse=True)
     
-    # Take top N
-    top_phrases = top_phrases[:top_n]
+    # Take more candidates (we'll filter with diversity check)
+    top_phrases = top_phrases[:top_n * 2]
     
-    print(f'  Found {len(top_phrases)} trending phrases')
+    print(f'  Found {len(top_phrases)} candidate phrases')
     
     # For each trending phrase, find matching articles and create summary
     trending_results = []
@@ -397,7 +418,25 @@ def identify_trending_wordcloud(articles, top_n=10):
             if phrase in article['title'].lower():
                 matching_articles.append(article)
         
-        if len(matching_articles) >= 3:
+        # OPTION C - PART 2: DIVERSITY CHECK
+        # Check if articles are actually diverse (not just repetitive tickers)
+        unique_titles = set()
+        for article in matching_articles:
+            # Get core of title (remove numbers, percentages, company names)
+            core_title = article['title'].lower()
+            # Remove numbers and percentages
+            core_title = re.sub(r'\d+(?:\.\d+)?%?', '', core_title)
+            core_title = re.sub(r'rs\.?\s*\d+(?:,\d+)*(?:\.\d+)?', '', core_title)
+            # Remove common stock ticker words
+            for noise in ['live', 'update', 'updates', 'today', 'now']:
+                core_title = core_title.replace(noise, '')
+            # Keep first 40 chars as signature
+            core_title = core_title.strip()[:40]
+            if core_title:
+                unique_titles.add(core_title)
+        
+        # LOWERED THRESHOLDS: 2 unique stories, 3 total articles
+        if len(unique_titles) >= 2 and len(matching_articles) >= 3:
             # Generate summary from top 3 article titles
             summary_titles = []
             for article in matching_articles[:3]:
@@ -416,6 +455,12 @@ def identify_trending_wordcloud(articles, top_n=10):
                 'count': len(matching_articles),
                 'summary': summary
             })
+            
+            # Stop if we have enough
+            if len(trending_results) >= top_n:
+                break
+    
+    print(f'  After diversity filtering: {len(trending_results)} trending topics')
     
     return trending_results
 
@@ -440,6 +485,7 @@ duplicate_count = 0
 print('\n' + '=' * 60)
 print('FETCHING ARTICLES FROM ' + str(len(feeds)) + ' FEEDS')
 print('=' * 60)
+print(f'Time window: {TIME_WINDOW_HOURS} hours')
 
 for feed_name, feed_info in feeds.items():
     try:
@@ -484,7 +530,7 @@ for feed_name, feed_info in feeds.items():
                 
                 if pub_date:
                     age_hours = (datetime.now() - pub_date).total_seconds() / 3600
-                    if age_hours <= 24:
+                    if age_hours <= TIME_WINDOW_HOURS:  # 24 hours
                         recent_count += 1
                     else:
                         continue
@@ -538,7 +584,7 @@ for feed_name, feed_info in feeds.items():
             'relevant': source_count
         }
         
-        print('  Recent (48hrs): ' + str(recent_count))
+        print(f'  Recent ({TIME_WINDOW_HOURS}hrs): ' + str(recent_count))
         print('  Relevant: ' + str(source_count))
         if feed_duplicates > 0:
             print('  Duplicates skipped: ' + str(feed_duplicates))
@@ -603,7 +649,7 @@ trending_topics = []
 
 if len(articles) >= MIN_ARTICLES_FOR_TRENDING:
     print('\n' + '=' * 60)
-    print('IDENTIFYING TRENDING TOPICS (WORD CLOUD)')
+    print('IDENTIFYING TRENDING TOPICS (WORD CLOUD + FILTERS)')
     print('=' * 60)
     print(f'Articles available: {len(articles)}')
     
@@ -613,7 +659,7 @@ if len(articles) >= MIN_ARTICLES_FOR_TRENDING:
         print(f'\n✓ Found {len(trending_topics)} trending topics:')
         for i, trending in enumerate(trending_topics, 1):
             print(f"  {i}. {trending['topic']}: {trending['count']} articles")
-        print('\n✅ Trending analysis complete (WORD CLOUD)')
+        print('\n✅ Trending analysis complete (OPTION C: Noise filter + Diversity check)')
     else:
         print('\n⚠️  No significant trending topics found')
 else:
