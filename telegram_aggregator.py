@@ -484,7 +484,7 @@ for feed_name, feed_info in feeds.items():
                 
                 if pub_date:
                     age_hours = (datetime.now() - pub_date).total_seconds() / 3600
-                    if age_hours <= 48:
+                    if age_hours <= 24:
                         recent_count += 1
                     else:
                         continue
