@@ -10,6 +10,8 @@ TELEGRAM_CHAT_ID
 6060496941
 # Shaunak
 6701448643
+# Satprem
+8511641794
 
 # Add more recipients here (one per line)
 # 1234567890
